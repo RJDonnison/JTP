@@ -1,0 +1,32 @@
+plugins {
+    id 'java'
+}
+
+allprojects {
+    group = 'org.reujdon.jtp'
+    version = '0.1.0'
+
+    repositories {
+        mavenLocal()
+        mavenCentral()
+    }
+}
+
+subprojects {
+    apply plugin: 'java'
+
+    java {
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
+    }
+
+    dependencies {
+        implementation("org.reujdon.async:Java-Async:1.0.0")
+        testImplementation platform('org.junit:junit-bom:5.10.0')
+        testImplementation 'org.junit.jupiter:junit-jupiter'
+    }
+
+    test {
+        useJUnitPlatform()
+    }
+}
