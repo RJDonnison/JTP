@@ -51,7 +51,7 @@ public class Server {
                 }
 
                 // Send response to client
-                out.println("Server received: " + clientMessage);
+                out.println(clientMessage);
             }
 
             in.close();

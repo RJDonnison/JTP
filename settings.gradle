@@ -1,3 +1,4 @@
 rootProject.name = 'JTP'
 include 'Client'
 include 'Server'
+include 'Shared'
