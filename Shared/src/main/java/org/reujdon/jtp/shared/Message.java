@@ -13,9 +13,9 @@ public abstract class Message {
     private final MessageType type;
 
     protected String token = null;
-    protected final Map<String, String> params = new HashMap<>();
+    protected final Map<String, Object> params = new HashMap<>();
 
-    public Message(MessageType type) {
+    protected Message(MessageType type) {
         this.type = type;
         this.id = String.valueOf(COUNTER.incrementAndGet());
     }
@@ -36,7 +36,7 @@ public abstract class Message {
         this.token = token.trim();
     }
 
-    protected void addParam(String key, String value) {
+    protected void addParam(String key, Object value) {
         if (params.containsKey(key))
             throw new IllegalArgumentException("Duplicate key: " + key);
 
@@ -51,9 +51,8 @@ public abstract class Message {
         if (token != null)
             json.put("token", token);
 
-        JSONObject paramJson = new JSONObject(params);
         if (!params.isEmpty())
-            json.put("params", paramJson);
+            json.put("params", new JSONObject(params));
 
         return json;
     }

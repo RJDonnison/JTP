@@ -1,7 +1,9 @@
 package org.reujdon.jtp.shared;
 
+import java.util.Map;
+
 public abstract class Request extends Message {
-    private long timeout;
+    private final long timeout;
 
     public Request(String command, long timeout) {
         super(MessageType.REQUEST);
@@ -10,13 +12,13 @@ public abstract class Request extends Message {
             throw new IllegalArgumentException("Timeout must be a positive integer");
 
         this.timeout = timeout;
-        addParam("Command", command);
+        addParam("command", command);
     }
 
     public long getTimeout() {
         return timeout;
     }
 
-    public abstract void onSuccess();
+    public abstract void onSuccess(Map<String, Object> response);
     public abstract void onError();
 }
