@@ -32,13 +32,13 @@ public class Client {
     private volatile boolean running = true;
     private Thread listeningThread;
 
-    private final HashMap<String, JSONObject> pendingResponses = new HashMap<>();
+    private final HashMap<String, Request> pendingResponses = new HashMap<>();
 
     public Client(){
         this.PORT = 8080;
         this.HOST = "localhost";
 
-        startClient();
+        start();
     }
 
     public Client(String host, int port) {
@@ -52,10 +52,10 @@ public class Client {
 
         this.HOST = host;
 
-        startClient();
+        start();
     }
 
-    private void startClient() {
+    private void start() {
         try{
             SSLContext sslContext = createSSLContext();
             SSLSocketFactory sslSocketFactory = sslContext.getSocketFactory();
@@ -69,7 +69,7 @@ public class Client {
             System.out.println("\nConnected to server at " + HOST + ":" + PORT + "\n");
         } catch (Exception e) {
             System.err.println("\nFailed to start client: " + e.getMessage());
-            closeClient();
+            close();
             throw new RuntimeException("Client initialization failed", e);
         }
 
@@ -103,7 +103,13 @@ public class Client {
                 String id = response.optString("id", null);
 
                 if (id != null && pendingResponses.containsKey(id)) {
-                    pendingResponses.put(id, response);
+                    Request request = pendingResponses.get(id);
+                    if (request == null)
+                        throw new RuntimeException("Request missing: " + id);
+
+                    Task.of(() -> handleResponse(response, request)).run();
+
+                    pendingResponses.remove(id);
                 } else {
                     System.err.println("Unmatched response: " + response);
                 }
@@ -116,7 +122,26 @@ public class Client {
         }
     }
 
-    private void closeClient() {
+    private void handleResponse(JSONObject response, Request request){
+        MessageType type = response.getEnum(MessageType.class, "type");
+
+        //Read params
+        Map<String, Object> params = new HashMap<>();
+        if (response.has("params")) {
+            JSONObject paramJson = response.getJSONObject("params");
+            for (String key : paramJson.keySet())
+                params.put(key, paramJson.get(key));
+        }
+
+        if (type == MessageType.ERROR) {
+            request.onError(params.get("message").toString());
+            return;
+        }
+
+        request.onSuccess(params);
+    }
+
+    public void close() {
         running = false;
 
         try {
@@ -138,65 +163,42 @@ public class Client {
         }
     }
 
-//    TODO: handle files/streams
-    private void sendRequest(Request req) {
+    public void sendCommand(Request req) {
         if (req == null)
             throw new IllegalArgumentException("Request cannot be null");
 
         String id = req.getId();
         JSONObject json = req.toJSON();
 
-        Task<Boolean> waitTask = Task.of(() -> {
-            final long startTime = System.currentTimeMillis();
-            final long timeout = req.getTimeout();
-
-            JSONObject res = null;
-
-            //Block until response or timeout
-            while (!Thread.currentThread().isInterrupted()
-                    && res == null
-                    && System.currentTimeMillis() - startTime < timeout) {
-                Async.waitFor(10);
-                res = pendingResponses.get(id);
-            }
-
-            if (res == null || json.getEnum(MessageType.class, "type") != MessageType.REQUEST) {
-                req.onError();
-                return false;
-            }
-
-            //Read params
-            Map<String, Object> params = new HashMap<>();
-            if (res.has("params")) {
-                JSONObject paramJson = res.getJSONObject("params");
-                for (String key : paramJson.keySet())
-                    params.put(key, paramJson.get(key));
-            }
-
-            req.onSuccess(params);
-            pendingResponses.remove(id);
-            return true;
-        });
-
-        pendingResponses.put(id, null);
+        pendingResponses.put(id, req);
 
         out.println(json);
         out.flush();
 
-        waitTask.run();
+        Task<Void> timeout = Task.of(() -> handleTimeout(req, id));
+        timeout.run();
+    }
+
+    private void handleTimeout(Request req, String id) {
+        Async.waitFor(req.getTimeout());
+
+        if (pendingResponses.containsKey(id))
+            req.onTimeout();
+
+        pendingResponses.remove(id);
     }
 
     public static void main(String[] args) {
         Client client = new Client();
 
-        client.sendRequest(new TestCommand());
+        client.sendCommand(new TestCommand());
 
         try {
-            Thread.sleep(5000);
+            Thread.sleep(5000); // TODO: improve
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
 
-        client.closeClient();
+        client.close();
     }
 }

@@ -42,5 +42,6 @@ public abstract class Request extends Message {
     }
 
     public abstract void onSuccess(Map<String, Object> response);
-    public abstract void onError();
+    public abstract void onError(String error);
+    public abstract void onTimeout();
 }

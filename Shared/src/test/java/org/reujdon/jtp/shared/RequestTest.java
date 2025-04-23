@@ -63,7 +63,8 @@ class RequestTest {
         TestRequest testRequest = new TestRequest("cmd", 100L);
 
         testRequest.onSuccess(new HashMap<>());
-        testRequest.onError();
+        testRequest.onError("Test");
+        testRequest.onTimeout();
     }
 
     // Concrete implementation for testing abstract Request class
@@ -82,7 +83,12 @@ class RequestTest {
         }
 
         @Override
-        public void onError() {
+        public void onError(String error) {
+            // Mock implementation
+        }
+
+        @Override
+        public void onTimeout() {
             // Mock implementation
         }
     }

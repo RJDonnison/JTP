@@ -13,6 +13,11 @@ public abstract class Message {
 
     protected final Map<String, Object> params = new HashMap<>();
 
+    protected Message(String id, MessageType type) {
+        this.id = id;
+        this.type = type;
+    }
+
     protected Message(MessageType type) {
         this.type = type;
         this.id = UUID.randomUUID().toString();

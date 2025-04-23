@@ -5,16 +5,21 @@ import java.util.Map;
 
 public class TestCommand extends Request {
     public TestCommand() {
-        super("Test", 500);
+        super("test", 500);
     }
 
     @Override
     public void onSuccess(Map<String, Object> response) {
-        System.out.println(response.get("command"));
+        System.out.println("Success!!!");
     }
 
     @Override
-    public void onError() {
-        System.out.println("Test error");
+    public void onError(String error) {
+        System.err.println(error);
+    }
+
+    @Override
+    public void onTimeout() {
+        System.err.println("Command timed out!!!");
     }
 }
