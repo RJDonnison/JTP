@@ -8,9 +8,10 @@ import java.io.PrintWriter;
 import java.security.KeyStore;
 
 public class Server {
-    private final int PORT;
     private static final String KEYSTORE_PATH = "Server/server_keystore.jks";
     private static final String KEYSTORE_PASSWORD = "serverpassword";
+
+    private final int PORT;
 
     public Server() {
         this.PORT = 8080;
@@ -64,6 +65,7 @@ public class Server {
         }
     }
 
+    //    TODO: update
     private static SSLContext createSSLContext() throws Exception {
         KeyStore keyStore = KeyStore.getInstance("JKS");
         keyStore.load(new FileInputStream(KEYSTORE_PATH), KEYSTORE_PASSWORD.toCharArray());

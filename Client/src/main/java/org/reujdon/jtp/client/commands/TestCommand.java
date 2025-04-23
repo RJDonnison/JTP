@@ -1,6 +1,7 @@
 package org.reujdon.jtp.client.commands;
 
 import org.reujdon.jtp.shared.Request;
+import java.util.Map;
 
 public class TestCommand extends Request {
     public TestCommand() {
@@ -8,8 +9,8 @@ public class TestCommand extends Request {
     }
 
     @Override
-    public void onSuccess() {
-        System.out.println("Test success");
+    public void onSuccess(Map<String, Object> response) {
+        System.out.println(response.get("command"));
     }
 
     @Override
