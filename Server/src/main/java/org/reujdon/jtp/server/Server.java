@@ -1,11 +1,16 @@
 package org.reujdon.jtp.server;
 
+import org.json.JSONObject;
+
 import javax.net.ssl.*;
 import java.io.*;
 import java.security.KeyStore;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 public class Server {
     private static final String KEYSTORE_PATH = "Server/server_keystore.jks";
@@ -14,6 +19,8 @@ public class Server {
     private final int PORT;
 
     private SSLServerSocket serverSocket;
+    private final CommandRegistry commandRegistry;
+
     private final ExecutorService clientThreadPool;
     private final ConcurrentHashMap<String, ClientHandler> activeClients = new ConcurrentHashMap<>();
 
@@ -29,6 +36,7 @@ public class Server {
 
         this.PORT = port;
 
+        this.commandRegistry = new CommandRegistry();
         this.clientThreadPool = Executors.newCachedThreadPool();
     }
 
@@ -119,6 +127,30 @@ public class Server {
         } catch (Exception e) {
             System.err.println("Error while closing the Server SSL socket: " + e.getMessage());
         }
+    }
+
+    public void addCommand(String command, CommandHandler handler) {
+        this.addCommand(command, handler, false);
+    }
+
+    public void addCommand(String command, CommandHandler handler, boolean overrideExisting) {
+        commandRegistry.register(command, handler, overrideExisting);
+    }
+
+    public void addCommand(String command, Function<Map<String, Object>, JSONObject> handlerFunction) {
+        this.addCommand(command, handlerFunction, false);
+    }
+
+    public void addCommand(String command, Function<Map<String, Object>, JSONObject> handlerFunction, boolean overrideExisting) {
+        commandRegistry.register(command, handlerFunction::apply, overrideExisting);
+    }
+
+    public void addCommand(String command, Supplier<JSONObject> handlerFunction) {
+        this.addCommand(command, handlerFunction, false);
+    }
+
+    public void addCommand(String command, Supplier<JSONObject> handlerFunction, boolean overrideExisting) {
+        commandRegistry.register(command, params -> handlerFunction.get(), overrideExisting);
     }
 
     public static void main(String[] args) {

@@ -7,11 +7,17 @@ public class Response extends Message {
         super(id, MessageType.RESPONSE);
     }
 
-    public void addParams(JSONObject jsonParams) {
-        if (jsonParams == null)
+    public Response(String id, JSONObject data){
+        this(id);
+
+        this.addParams(data);
+    }
+
+    public void addParams(JSONObject data) {
+        if (data == null)
             return;
 
-        for (String key : jsonParams.keySet())
-            params.put(key, jsonParams.get(key));
+        for (String key : data.keySet())
+            params.put(key, data.get(key));
     }
 }

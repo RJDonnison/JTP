@@ -1,9 +1,9 @@
 package org.reujdon.jtp.client;
 
-
 import org.json.JSONObject;
 import org.reujdon.jtp.client.commands.TestCommand;
 import org.reujdon.jtp.shared.MessageType;
+import org.reujdon.jtp.shared.Parse;
 import org.reujdon.jtp.shared.Request;
 import reujdon.async.Async;
 import reujdon.async.Task;
@@ -126,21 +126,21 @@ public class Client {
     private void handleResponse(JSONObject response, Request request){
         MessageType type = response.getEnum(MessageType.class, "type");
 
-        //Read params
-        Map<String, Object> params = new HashMap<>();
-        if (response.has("params")) {
-            JSONObject paramJson = response.getJSONObject("params");
-            for (String key : paramJson.keySet())
-                params.put(key, paramJson.get(key));
-        }
+        Map<String, Object> params = Parse.Params(response);
 
-        if (type == MessageType.ERROR) {
-            request.onError(params.get("message").toString());
-            return;
-        }
+        switch (type) {
+            case ERROR ->
+                request.onError(params.get("message").toString());
 
-        request.onSuccess(params);
+            case AUTH ->
+                handleAuth();
+
+            case null, default ->
+                request.onSuccess(params);
+        }
     }
+
+    private void handleAuth() {}
 
     public void sendCommand(Request req) {
         if (req == null)

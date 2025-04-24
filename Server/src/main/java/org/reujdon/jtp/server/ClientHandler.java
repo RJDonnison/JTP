@@ -2,6 +2,7 @@ package org.reujdon.jtp.server;
 
 import org.json.JSONObject;
 import org.reujdon.jtp.shared.Error;
+import org.reujdon.jtp.shared.Parse;
 import org.reujdon.jtp.shared.Response;
 
 import javax.net.ssl.SSLSocket;
@@ -9,7 +10,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
-import java.util.HashMap;
 import java.util.Map;
 
 class ClientHandler implements Runnable {
@@ -42,13 +42,7 @@ class ClientHandler implements Runnable {
                 if (commandID == null || commandID.trim().isEmpty())
                     throw new RuntimeException("ID is null or empty");
 
-                //Read params
-                Map<String, Object> params = new HashMap<>();
-                if (json.has("params")) {
-                    JSONObject paramJson = json.getJSONObject("params");
-                    for (String key : paramJson.keySet())
-                        params.put(key, paramJson.get(key));
-                }
+                Map<String, Object> params = Parse.Params(json);
 
                 if (!params.containsKey("command")) {
                     System.err.println("No command.");
@@ -79,8 +73,7 @@ class ClientHandler implements Runnable {
     }
 
     private void sendResponse(String commandID, JSONObject params) {
-        Response response = new Response(commandID);
-        response.addParams(params);
+        Response response = new Response(commandID, params);
 
         out.println(response.toJSON());
     }
@@ -88,6 +81,10 @@ class ClientHandler implements Runnable {
     private void sendError(String id, String message) {
         System.err.println("Error with id: " + id + "\nMessage: " + message);
         out.println(new Error(id, message).toJSON());
+    }
+
+    private void sendAuth(){
+
     }
 
     public void close() {
