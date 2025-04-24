@@ -9,7 +9,7 @@ public class Test implements CommandHandler {
     @Override
     public JSONObject handle(Map<String, Object> params) {
         JSONObject json = new JSONObject();
-        json.put("command", "test");
+        json.put("message", "test");
         return json;
     }
 }

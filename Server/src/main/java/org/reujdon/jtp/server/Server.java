@@ -1,14 +1,11 @@
 package org.reujdon.jtp.server;
 
-import org.json.JSONObject;
-import org.reujdon.jtp.shared.Error;
-import org.reujdon.jtp.shared.Response;
-
 import javax.net.ssl.*;
 import java.io.*;
 import java.security.KeyStore;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Server {
     private static final String KEYSTORE_PATH = "Server/server_keystore.jks";
@@ -16,10 +13,9 @@ public class Server {
 
     private final int PORT;
 
-    private SSLSocket sslSocket;
-
-    private BufferedReader in;
-    private PrintWriter out;
+    private SSLServerSocket serverSocket;
+    private final ExecutorService clientThreadPool;
+    private final ConcurrentHashMap<String, ClientHandler> activeClients = new ConcurrentHashMap<>();
 
     private boolean running;
 
@@ -27,13 +23,13 @@ public class Server {
         this(8080);
     }
 
-    public Server(int port){
+    public Server(int port) {
         if(port < 0 || port > 65536)
             throw new IllegalArgumentException("Port must be between 0 and 65536");
 
         this.PORT = port;
 
-        start();
+        this.clientThreadPool = Executors.newCachedThreadPool();
     }
 
     public void start() {
@@ -42,7 +38,7 @@ public class Server {
         try {
             SSLContext sslContext = createSSLContext();
             SSLServerSocketFactory ssf = sslContext.getServerSocketFactory();
-            SSLServerSocket sslServerSocket = (SSLServerSocket) ssf.createServerSocket(this.PORT);
+            serverSocket = (SSLServerSocket) ssf.createServerSocket(this.PORT);
 
             // Add shutdown hook to close server socket on Ctrl+C
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -52,16 +48,7 @@ public class Server {
 
             System.out.println("Server started on port " + this.PORT);
 
-            while (running) {
-                System.out.println("\nWaiting for a client to connect...");
-                sslSocket = (SSLSocket) sslServerSocket.accept();
-
-                in = new BufferedReader(new InputStreamReader(sslSocket.getInputStream()));
-                out = new PrintWriter(sslSocket.getOutputStream(), true);
-
-                handleClient();
-            }
-
+            handleClients();
         } catch (Exception e) {
             System.err.println("\nFailed to start Server: " + e.getMessage());
             close();
@@ -86,67 +73,52 @@ public class Server {
         return sslContext;
     }
 
+    private void handleClients() throws IOException {
+        System.out.println("Waiting for clients to connect...\n");
+
+        while (running) {
+            try {
+                SSLSocket clientSocket = (SSLSocket) serverSocket.accept();
+
+                ClientHandler clientHandler = new ClientHandler(clientSocket, this);
+                String clientId = clientSocket.getRemoteSocketAddress().toString();
+
+                activeClients.put(clientId, clientHandler);
+                clientThreadPool.execute(clientHandler);
+
+                System.out.println("New client connected, ID: " + clientId + ". Active clients: " + activeClients.size());
+            } catch (SSLException e) {
+                System.err.println("SSL handshake failed with client: " + e.getMessage());
+            } catch (IOException e) {
+                throw new IOException(e);
+            }
+        }
+    }
+
+    void removeClient(String clientId) {
+        activeClients.remove(clientId);
+        System.out.println("Client " + clientId + " disconnected. Active clients: " + activeClients.size());
+    }
+
     public void close() {
         running = false;
 
         try {
-            if (out != null) out.close();
-            if (in != null) in.close();
-            if (sslSocket != null && !sslSocket.isClosed()) sslSocket.close();
+            for (ClientHandler handler : activeClients.values())
+                handler.close();
 
-            System.out.println("Server closed successfully.");
-        } catch (IOException e) {
+            activeClients.clear();
+
+            if (clientThreadPool != null)
+                clientThreadPool.shutdownNow();
+
+            if (serverSocket != null && !serverSocket.isClosed())
+                serverSocket.close();
+
+            System.out.println("Server closed successfully. All clients disconnected.");
+        } catch (Exception e) {
             System.err.println("Error while closing the Server SSL socket: " + e.getMessage());
         }
-    }
-
-    private void handleClient() {
-        try{
-            String message;
-
-            while ((message = in.readLine()) != null) {
-                JSONObject json = new JSONObject(message);
-                String id = json.getString("id");
-
-                if (id == null || id.trim().isEmpty())
-                    throw new RuntimeException("ID is null or empty");
-
-                //Read params
-                Map<String, Object> params = new HashMap<>();
-                if (json.has("params")) {
-                    JSONObject paramJson = json.getJSONObject("params");
-                    for (String key : paramJson.keySet())
-                        params.put(key, paramJson.get(key));
-                }
-
-                if (!params.containsKey("command")) {
-                    System.err.println("No command.");
-                    continue;
-                }
-
-                String command = params.get("command").toString();
-
-                CommandHandler handler = CommandRegistry.getHandler(command);
-                if (handler != null) {
-                    sendResponse(id);
-                } else {
-                    sendError(id, "Unknown command");
-                }
-            }
-        }
-        catch (IOException e){
-            System.err.println("IOException during client communication: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
-    private void sendResponse(String id) {
-        out.println(new Response(id).toJSON());
-    }
-
-    private void sendError(String id, String message) {
-        System.err.println("Error with id: " + id + "\nMessage: " + message);
-        out.println(new Error(id, message).toJSON());
     }
 
     public static void main(String[] args) {

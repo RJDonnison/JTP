@@ -10,7 +10,8 @@ public class TestCommand extends Request {
 
     @Override
     public void onSuccess(Map<String, Object> response) {
-        System.out.println("Success!!!");
+        if (response.containsKey("message"))
+            System.out.println(response.get("message"));
     }
 
     @Override

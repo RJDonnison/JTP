@@ -16,6 +16,7 @@ import java.io.*;
 import java.security.KeyStore;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public class Client {
     private static final String TRUSTSTORE_PATH = "Client/client_truststore.jks";
@@ -141,28 +142,6 @@ public class Client {
         request.onSuccess(params);
     }
 
-    public void close() {
-        running = false;
-
-        try {
-            if (out != null) out.close();
-            if (in != null) in.close();
-            if (sslSocket != null && !sslSocket.isClosed()) sslSocket.close();
-
-            System.out.println("Client closed successfully.");
-        } catch (IOException e) {
-            System.err.println("Error while closing the client SSL socket: " + e.getMessage());
-        }
-
-        if (listeningThread != null && listeningThread.isAlive()) {
-            try {
-                listeningThread.join(1000); // Optional: wait for the thread to clean up
-            } catch (InterruptedException e) {
-                System.err.println("Interrupted while waiting for listening thread to stop.");
-            }
-        }
-    }
-
     public void sendCommand(Request req) {
         if (req == null)
             throw new IllegalArgumentException("Request cannot be null");
@@ -188,16 +167,34 @@ public class Client {
         pendingResponses.remove(id);
     }
 
+    public void close() {
+        running = false;
+
+        try {
+            if (out != null) out.close();
+            if (in != null) in.close();
+            if (sslSocket != null && !sslSocket.isClosed()) sslSocket.close();
+
+            System.out.println("Client closed successfully.");
+        } catch (IOException e) {
+            System.err.println("Error while closing the client SSL socket: " + e.getMessage());
+        }
+
+        if (listeningThread != null && listeningThread.isAlive()) {
+            try {
+                listeningThread.join(1000); // Optional: wait for the thread to clean up
+            } catch (InterruptedException e) {
+                System.err.println("Interrupted while waiting for listening thread to stop.");
+            }
+        }
+    }
+
     public static void main(String[] args) {
         Client client = new Client();
 
         client.sendCommand(new TestCommand());
 
-        try {
-            Thread.sleep(5000); // TODO: improve
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        Async.waitFor(5, TimeUnit.SECONDS); //TODO: improve
 
         client.close();
     }
