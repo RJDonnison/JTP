@@ -128,6 +128,13 @@ class MessageTest {
         assertEquals(MessageType.ERROR, error.toJSON().getEnum(MessageType.class, "type"));
     }
 
+    @Test
+    void testGetParamsDefault() {
+        message.addParam("param1", "value1");
+
+        assertNull( message.getParam("param2", null));
+    }
+
     // Concrete implementation for testing abstract Message class
     private static class TestMessage extends Message {
         public TestMessage(MessageType type) {

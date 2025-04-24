@@ -18,6 +18,19 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * A secure client that connects to a server over SSL/TLS.
+ *
+ * <p>The client provides the following features:</p>
+ * <ul>
+ *   <li>Secure communication using SSL/TLS protocol</li>
+ *   <li>Asynchronous handling of server responses</li>
+ *   <li>Timeout management for requests</li>
+ *   <li>Ability to send custom commands to the server using the {@link #sendCommand(Request)} method</li>
+ * </ul>
+ *
+ * @see SSLContext
+ */
 public class Client {
     private static final String TRUSTSTORE_PATH = "Client/client_truststore.jks";
     private static final String TRUSTSTORE_PASSWORD = "clientpassword";
@@ -30,18 +43,29 @@ public class Client {
     private BufferedReader in;
     private PrintWriter out;
 
-    private volatile boolean running = true;
+    private volatile boolean running = false;
     private Thread listeningThread;
 
     private final HashMap<String, Request> pendingResponses = new HashMap<>();
 
+    /**
+     * Constructs a new {@code Client} with default connection parameters.
+     * <p>
+     * Equivalent to calling {@code new Client("localhost", 8080)}.
+     *
+     * @see #Client(String, int)
+     */
     public Client(){
-        this.PORT = 8080;
-        this.HOST = "localhost";
-
-        start();
+        this("localhost", 8080);
     }
 
+    /**
+     * Constructs a new {@code Client} and attempts to connect to the specified host and port.
+     *
+     * @param host the hostname or IP address of the server
+     * @param port the port number on which the server is listening (0–65536)
+     * @throws IllegalArgumentException if the port is out of range or the host is {@code null} or empty
+     */
     public Client(String host, int port) {
         if(port < 0 || port > 65536)
             throw new IllegalArgumentException("Port must be between 0 and 65536");
@@ -56,6 +80,19 @@ public class Client {
         start();
     }
 
+    /**
+     * Initializes the SSL connection to the server and sets up input/output streams.
+     * <p>
+     * This method creates an {@link SSLContext}, connects to the server at the specified
+     * {@code HOST} and {@code PORT}, and opens buffered streams for communication.
+     * It also starts a new thread to handle incoming responses asynchronously.
+     *
+     * @throws RuntimeException if:
+     * <ul>
+     *     <li>an exception occurs during initialization</li>
+     *     <li>inability to create the SSL context or connect to the server</li>
+     * </ul>
+     */
     private void start() {
         try{
             SSLContext sslContext = createSSLContext();
@@ -67,9 +104,11 @@ public class Client {
             in = new BufferedReader(new InputStreamReader(sslSocket.getInputStream()));
             out = new PrintWriter(sslSocket.getOutputStream(), true);
 
-            System.out.println("\nConnected to server at " + HOST + ":" + PORT + "\n");
+            System.out.println("Connected to server at " + HOST + ":" + PORT + "\n");
+
+            running = true;
         } catch (Exception e) {
-            System.err.println("\nFailed to start client: " + e.getMessage());
+            System.err.println("Failed to start client: " + e.getMessage());
             close();
             throw new RuntimeException("Client initialization failed", e);
         }
@@ -78,23 +117,51 @@ public class Client {
         listeningThread.start();
     }
 
-//    TODO: update
-    private static SSLContext createSSLContext() throws Exception {
-        // Load the truststore
-        KeyStore trustStore = KeyStore.getInstance("JKS");
-        trustStore.load(new FileInputStream(TRUSTSTORE_PATH), TRUSTSTORE_PASSWORD.toCharArray());
+    /**
+     * Creates and initializes an SSLContext for secure communication using TLS protocol.
+     * The SSLContext is configured with trust managers loaded from a JKS truststore.
+     *
+     * @return Initialized SSLContext ready for use in secure communications
+     */
+    private static SSLContext createSSLContext() {
+        // Validate inputs
+        //noinspection ConstantValue
+        if (TRUSTSTORE_PATH.trim().isEmpty())
+            throw new IllegalArgumentException("Truststore path must not be null or empty");
 
-        // Set up trust manager factory
-        TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance("SunX509");
-        trustManagerFactory.init(trustStore);
+        FileInputStream fis = null;
 
-        // Initialize SSL context
-        SSLContext sslContext = SSLContext.getInstance("TLS");
-        sslContext.init(null, trustManagerFactory.getTrustManagers(), null);
+        try{
+            // Load the truststore
+            KeyStore trustStore = KeyStore.getInstance("JKS");
+            fis = new FileInputStream(TRUSTSTORE_PATH);
+            trustStore.load(fis, TRUSTSTORE_PASSWORD.toCharArray());
 
-        return sslContext;
+            // Set up trust manager factory
+            TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance("SunX509");
+            trustManagerFactory.init(trustStore);
+
+            // Initialize SSL context
+            SSLContext sslContext = SSLContext.getInstance("TLS");
+            sslContext.init(null, trustManagerFactory.getTrustManagers(), null);
+
+            return sslContext;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to initialize the SSL context", e);
+        }finally {
+            if (fis != null) {
+                try {
+                    fis.close();
+                } catch (IOException e) {
+                    System.err.println("Warning: Failed to close keystore file input stream: " + e.getMessage());
+                }
+            }
+        }
     }
 
+    /**
+     * Listens for and processes pending responses from the server.
+     */
     private void handlePendingResponses() {
         String line;
 
@@ -111,19 +178,33 @@ public class Client {
                     Task.of(() -> handleResponse(response, request)).run();
 
                     pendingResponses.remove(id);
-                } else {
+                } else
                     System.err.println("Unmatched response: " + response);
-                }
             }
         } catch (IOException e) {
             if (running)
                 System.err.println("Error while listening for responses: " + e.getMessage());
             else
-                System.out.println("\nListening thread closed.");
+                System.out.println("Listening thread closed.");
+        } catch (Exception e) {
+            System.err.println("Unexpected error while handling response: " + e.getMessage());
         }
     }
 
+    /**
+     * Handles the response from the server and passes to suitable {@link Request} function.
+     *
+     * @param response the {@link JSONObject} containing the server's response data
+     * @param request  the {@link Request} associated with the response
+     * @throws IllegalArgumentException if {@code response} or {@code request} is null
+     */
     private void handleResponse(JSONObject response, Request request){
+        if (response == null)
+            throw new IllegalArgumentException("Response cannot be null");
+
+        if (request == null)
+            throw new IllegalArgumentException("Request cannot be null");
+
         MessageType type = response.getEnum(MessageType.class, "type");
 
         Map<String, Object> params = Parse.Params(response);
@@ -132,61 +213,96 @@ public class Client {
             case ERROR ->
                 request.onError(params.get("message").toString());
 
-            case AUTH ->
-                handleAuth();
+            case RESPONSE ->
+                request.onSuccess(params);
 
             case null, default ->
-                request.onSuccess(params);
+                System.err.println("Unsupported message type: " + response);
         }
     }
 
-    private void handleAuth() {}
-
-    public void sendCommand(Request req) {
-        if (req == null)
+    /**
+     * Sends a command to the server and stores the associated request for later response handling.
+     *
+     * @param request the {@link Request} object containing the command to be sent
+     * @throws IllegalArgumentException if the request is {@code null} or request id is {@code null}
+     */
+    public void sendCommand(Request request) {
+        if (request == null)
             throw new IllegalArgumentException("Request cannot be null");
 
-        String id = req.getId();
-        JSONObject json = req.toJSON();
+        String id = request.getId();
+        if (id == null || id.trim().isEmpty())
+            throw new IllegalArgumentException("Request id cannot be null or empty");
 
-        pendingResponses.put(id, req);
+        JSONObject json = request.toJSON();
+
+        pendingResponses.put(id, request);
 
         out.println(json);
         out.flush();
 
-        Task<Void> timeout = Task.of(() -> handleTimeout(req, id));
+        Task<Void> timeout = Task.of(() -> handleTimeout(request, id));
         timeout.run();
     }
 
-    private void handleTimeout(Request req, String id) {
-        Async.waitFor(req.getTimeout());
+    /**
+     * Handles the timeout for a request if a response is not received within the specified timeout period.
+     *
+     * @param request the {@link Request} object that timed out
+     * @param id the unique identifier of the request
+     * @throws IllegalArgumentException if request or id is null or empty
+     */
+    private void handleTimeout(Request request, String id) {
+        if (request == null)
+            throw new IllegalArgumentException("Request cannot be null");
+
+        if (id == null || id.trim().isEmpty())
+            throw new IllegalArgumentException("Id cannot be null or empty");
+
+        Async.waitFor(request.getTimeout());
 
         if (pendingResponses.containsKey(id))
-            req.onTimeout();
+            request.onTimeout();
 
         pendingResponses.remove(id);
     }
 
+    /**
+     * Closes the client connection and associated resources.
+     */
     public void close() {
+        System.out.println("\nClosing connection...");
+
         running = false;
 
         try {
-            if (out != null) out.close();
-            if (in != null) in.close();
-            if (sslSocket != null && !sslSocket.isClosed()) sslSocket.close();
-
-            System.out.println("Client closed successfully.");
+            if (out != null) {
+                out.close();
+                System.out.println("Output stream closed.");
+            }
+            if (in != null) {
+                in.close();
+                System.out.println("Input stream closed.");
+            }
+            if (sslSocket != null && !sslSocket.isClosed()) {
+                sslSocket.close();
+                System.out.println("SSL socket closed.");
+            }
         } catch (IOException e) {
-            System.err.println("Error while closing the client SSL socket: " + e.getMessage());
+            System.err.println("Error while closing the client SSL socket or streams: " + e.getMessage());
         }
 
         if (listeningThread != null && listeningThread.isAlive()) {
             try {
                 listeningThread.join(1000); // Optional: wait for the thread to clean up
             } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
                 System.err.println("Interrupted while waiting for listening thread to stop.");
             }
         }
+
+        System.out.println("\nClient resources closed successfully.");
     }
 
     public static void main(String[] args) {
