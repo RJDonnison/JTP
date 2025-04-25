@@ -60,6 +60,29 @@ public class Client {
     }
 
     /**
+     * Constructs a new {@code Client} with default port.
+     * <p>
+     * Equivalent to calling {@code new Client(host, 8080)}.
+     *
+     * @param host the hostname or IP address of the server
+     * @throws IllegalArgumentException if the host is {@code null} or empty
+     *
+     * @see #Client(String, int)
+     */
+    public Client(String host){ this(host, 8080); }
+
+    /**
+     * Constructs a new {@code Client} with default host.
+     * <p>
+     * Equivalent to calling {@code new Client("localhost", port)}.
+     * @param port the port number on which the server is listening (0–65536)
+     * @throws IllegalArgumentException if the port is out of range
+     *
+     * @see #Client(String, int)
+     */
+    public Client(int port){ this("localhost", port); }
+
+    /**
      * Constructs a new {@code Client} and attempts to connect to the specified host and port.
      *
      * @param host the hostname or IP address of the server
@@ -72,7 +95,7 @@ public class Client {
 
         this.PORT = port;
 
-        if(host == null || host.isEmpty())
+        if(host == null || host.trim().isEmpty())
             throw new IllegalArgumentException("Host cannot be null or empty");
 
         this.HOST = host;

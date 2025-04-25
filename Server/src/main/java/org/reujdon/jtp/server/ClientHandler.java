@@ -107,7 +107,6 @@ class ClientHandler implements Runnable {
 
         // Verify command exists
         if (!params.containsKey("command")) {
-            System.err.println("No command.");
             sendError(commandId, "No command specified");
             return;
         }
