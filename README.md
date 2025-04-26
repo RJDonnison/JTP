@@ -22,3 +22,7 @@ It provides a simple API for building custom transfer systems over network socke
 ## Requirements
 
 - Java 21+
+
+![Release](https://img.shields.io/github/v0.1.0/release/RJDonnison/JTP)
+
+![License](https://img.shields.io/github/license/RJDonnison/JTP)
