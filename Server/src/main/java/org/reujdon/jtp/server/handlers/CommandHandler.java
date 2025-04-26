@@ -1,4 +1,4 @@
-package org.reujdon.jtp.server;
+package org.reujdon.jtp.server.handlers;
 
 import org.json.JSONObject;
 
@@ -10,6 +10,7 @@ import java.util.Map;
  * <p>Command handlers are responsible for executing specific commands and returning appropriate
  * responses in JSON format. Implementations should:</p>
  * <ul>
+ *   <li>Have a description defined by {@link jdk.jfr.Description}</li>
  *   <li>Validate input parameters</li>
  *   <li>Perform the requested operation</li>
  *   <li>Return a well-formed JSON response</li>

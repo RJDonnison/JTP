@@ -1,6 +1,6 @@
-package org.reujdon.jtp.server;
+package org.reujdon.jtp.server.handlers;
 
-import org.reujdon.jtp.server.handlers.Test;
+import jdk.jfr.Description;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -12,12 +12,13 @@ import java.util.Map;
  *
  * @see CommandHandler
  */
-class CommandRegistry {
+public class CommandRegistry {
     private static final Map<String, CommandHandler> handlers = new HashMap<>();
 
 //    Base command initialization
     static {
-        handlers.put("test", new Test());
+        handlers.put("Help", new HelpCommandHandler());
+        validateDescriptions();
     }
 
     /**
@@ -32,12 +33,42 @@ class CommandRegistry {
         if (command == null || command.trim().isEmpty())
             throw new IllegalArgumentException("Command cannot be null or empty");
 
-        command = command.trim().toLowerCase();
+        command = command.trim();
 
         if (!handlers.containsKey(command))
             return null;
 
         return handlers.get(command);
+    }
+
+    /**
+     * Gets the description of a specific command based on the {@link Description} annotation.
+     *
+     * @param command the command to describe
+     * @return the description or an empty string if not found or missing
+     * @throws IllegalArgumentException if command is null or empty
+     */
+    public static String getDescription(String command) {
+        CommandHandler handler = getHandler(command);
+        if (handler == null) return "";
+
+        Description desc = handler.getClass().getAnnotation(Description.class);
+        if (desc != null) return desc.value();
+
+        return "";
+    }
+
+    /**
+     * Gets the descriptions of all registered commands.
+     *
+     * @return map of command -> description
+     */
+    public static Map<String, String> getDescriptions() {
+        Map<String, String> descriptions = new HashMap<>();
+        for (String command : handlers.keySet())
+            descriptions.put(command, getDescription(command));
+
+        return descriptions;
     }
 
     /**
@@ -59,19 +90,42 @@ class CommandRegistry {
      *           <li>handler is null</li>
      *           <li>command exists and override=false</li>
      *         </ul>
+     * @throws RuntimeException if handler is missing @Description
      */
-    public void register(String command, CommandHandler handler, boolean override) {
+    public static void register(String command, CommandHandler handler, boolean override) {
         if (command == null || command.trim().isEmpty())
             throw new IllegalArgumentException("Command cannot be null or empty");
 
         if (handler == null)
             throw new IllegalArgumentException("Handler cannot be null");
 
-        command = command.trim().toLowerCase();
+        command = command.trim();
 
         if (!override && handlers.containsKey(command))
             throw new IllegalArgumentException("Command " + command + " already exists");
 
-        handlers.put(command.toLowerCase(), handler);
+        validateDescription(handler.getClass());
+
+        handlers.put(command, handler);
+    }
+
+    /**
+     * Validates that all registered {@link CommandHandler} implementations
+     * are annotated with {@link Description}.
+     */
+    private static void validateDescriptions() {
+        for (CommandHandler c : handlers.values())
+            validateDescription(c.getClass());
+    }
+
+    /**
+     * Checks whether the given class is annotated with {@link Description}.
+     *
+     * @param clazz the class to check
+     * @throws RuntimeException if the class is not annotated with {@link Description}
+     */
+    private static void validateDescription(Class<?> clazz) {
+        if (clazz.getAnnotation(Description.class) == null)
+            throw new RuntimeException("Missing @Description on command handler: " + clazz.getName());
     }
 }

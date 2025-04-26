@@ -1,7 +1,7 @@
 package org.reujdon.jtp.client;
 
 import org.json.JSONObject;
-import org.reujdon.jtp.client.commands.TestCommand;
+import org.reujdon.jtp.client.commands.HelpCommand;
 import org.reujdon.jtp.shared.MessageType;
 import org.reujdon.jtp.shared.Parse;
 import org.reujdon.jtp.shared.Request;
@@ -331,7 +331,7 @@ public class Client {
     public static void main(String[] args) {
         Client client = new Client();
 
-        client.sendCommand(new TestCommand());
+        client.sendCommand(new HelpCommand());
 
         Async.waitFor(5, TimeUnit.SECONDS); //TODO: improve
 

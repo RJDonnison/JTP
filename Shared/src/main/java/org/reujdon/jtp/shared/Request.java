@@ -129,19 +129,10 @@ public abstract class Request extends Message {
      * message will typically come from the server and describe what went wrong.</p>
      *
      * @param error A descriptive error message explaining the failure
-     *
-     * @Example:
-     * <pre>
-     * {@code
-     * // Handling a failed request
-     * public void onError(String error) {
-     *     logger.error("Request failed: " + error);
-     *     showErrorToUser(error);
-     * }
-     * }
-     * </pre>
      */
-    public abstract void onError(String error);
+    public void onError(String error){
+        System.err.println("Error: " + error);
+    }
 
     /**
      * Called when the request times out before receiving a response.

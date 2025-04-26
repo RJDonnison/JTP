@@ -1,6 +1,7 @@
 package org.reujdon.jtp.server;
 
-import org.json.JSONObject;
+import org.reujdon.jtp.server.handlers.CommandHandler;
+import org.reujdon.jtp.server.handlers.CommandRegistry;
 
 import javax.net.ssl.*;
 import java.io.*;
@@ -10,8 +11,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
-import java.util.function.Supplier;
 
 /**
  * A secure SSL/TLS server implementation that handles multiple client connections concurrently.
@@ -43,13 +42,11 @@ public class Server {
     private final int PORT;
 
     private SSLServerSocket serverSocket;
-    private final CommandRegistry commandRegistry;
 
     private final ExecutorService clientThreadPool;
     private final ConcurrentHashMap<String, ClientHandler> activeClients = new ConcurrentHashMap<>();
 
     private boolean running;
-
 
     /**
      * Constructs a Server instance with the default port 8080.
@@ -69,14 +66,13 @@ public class Server {
      * @throws RuntimeException If there's an issue initializing server resources.
      */
     public Server(int port) {
-        if (port < 0 || port > 65536)
+        if (port < 0 || port > 65535)
             throw new IllegalArgumentException(String.format("Invalid port number: %d. Port must be between 0 and 65535", port));
 
         this.PORT = port;
         this.running = false;
 
         try {
-            this.commandRegistry = new CommandRegistry();
             this.clientThreadPool = Executors.newCachedThreadPool();
         } catch (Exception e) {
             throw new RuntimeException("Failed to initialize server components", e);
@@ -357,69 +353,7 @@ public class Server {
         if (handler == null)
             throw new IllegalArgumentException("Handler must not be null");
 
-        commandRegistry.register(command, handler, overrideExisting);
-    }
-
-    /**
-     * Registers a command with a function that accepts parameters and returns JSON response.
-     * Will not override existing commands.
-     *
-     * @param command The command string to register
-     * @param handlerFunction Function that processes command parameters and returns response
-     * @throws IllegalArgumentException if command is null/empty or handler function is null
-     */
-    public void addCommand(String command, Function<Map<String, Object>, JSONObject> handlerFunction) {
-        this.addCommand(command, handlerFunction, false);
-    }
-
-    /**
-     * Registers a command with a function that accepts parameters and returns JSON response
-     * with option to override existing commands.
-     *
-     * @param command The command string to register
-     * @param handlerFunction Function that processes command parameters and returns response
-     * @param overrideExisting If true, will replace existing command
-     * @throws IllegalArgumentException if command is null/empty or handler function is null
-     */
-    public void addCommand(String command, Function<Map<String, Object>, JSONObject> handlerFunction, boolean overrideExisting) {
-        if (command == null || command.trim().isEmpty())
-            throw new IllegalArgumentException("Command must not be null or empty");
-
-        if (handlerFunction == null)
-            throw new IllegalArgumentException("Handler function must not be null");
-
-        commandRegistry.register(command, handlerFunction::apply, overrideExisting);
-    }
-
-    /**
-     * Registers a parameter-less command with a supplier that returns JSON response.
-     * Will not override existing commands.
-     *
-     * @param command The command string to register
-     * @param handlerFunction Supplier that generates the command response
-     * @throws IllegalArgumentException if command is null/empty or handler function is null
-     */
-    public void addCommand(String command, Supplier<JSONObject> handlerFunction) {
-        this.addCommand(command, handlerFunction, false);
-    }
-
-    /**
-     * Registers a parameter-less command with a supplier that returns JSON response
-     * with option to override existing commands.
-     *
-     * @param command The command string to register
-     * @param handlerFunction Supplier that generates the command response
-     * @param overrideExisting If true, will replace existing command
-     * @throws IllegalArgumentException if command is null/empty or handler function is null
-     */
-    public void addCommand(String command, Supplier<JSONObject> handlerFunction, boolean overrideExisting) {
-        if (command == null || command.trim().isEmpty())
-            throw new IllegalArgumentException("Command must not be null or empty");
-
-        if (handlerFunction == null)
-            throw new IllegalArgumentException("Handler function must not be null");
-
-        commandRegistry.register(command, params -> handlerFunction.get(), overrideExisting);
+        CommandRegistry.register(command, handler, overrideExisting);
     }
 
     public static void main(String[] args) {
