@@ -1,6 +1,8 @@
 package org.reujdon.jtp.server;
 
 import org.json.JSONObject;
+import org.reujdon.jtp.server.handlers.CommandHandler;
+import org.reujdon.jtp.server.handlers.CommandRegistry;
 import org.reujdon.jtp.shared.Error;
 import org.reujdon.jtp.shared.Parse;
 import org.reujdon.jtp.shared.Response;
@@ -111,14 +113,14 @@ class ClientHandler implements Runnable {
             return;
         }
 
-        String command = params.get("command").toString().trim().toLowerCase();
+        String command = params.get("command").toString().trim();
         System.out.println("\nClient: " + clientId + ", Sent command: " + command);
 
         // Get and execute handler
         CommandHandler handler = CommandRegistry.getHandler(command);
         try {
             if (handler == null) {
-                sendError(commandId, "Unknown command: " + command);
+                sendError(commandId, "Unknown command, " + command);
                 return;
             }
 

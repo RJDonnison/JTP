@@ -1,9 +1,9 @@
 package org.reujdon.jtp.client;
 
 import org.json.JSONObject;
-import org.reujdon.jtp.client.commands.TestCommand;
 import org.reujdon.jtp.shared.MessageType;
 import org.reujdon.jtp.shared.Parse;
+import org.reujdon.jtp.shared.PropertiesUtil;
 import org.reujdon.jtp.shared.Request;
 import reujdon.async.Async;
 import reujdon.async.Task;
@@ -16,7 +16,6 @@ import java.io.*;
 import java.security.KeyStore;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 /**
  * A secure client that connects to a server over SSL/TLS.
@@ -32,8 +31,8 @@ import java.util.concurrent.TimeUnit;
  * @see SSLContext
  */
 public class Client {
-    private static final String TRUSTSTORE_PATH = "Client/client_truststore.jks";
-    private static final String TRUSTSTORE_PASSWORD = "clientpassword";
+    private final String TRUSTSTORE_PATH;
+    private final String TRUSTSTORE_PASSWORD;
 
     private final String HOST;
     private final int PORT;
@@ -53,10 +52,12 @@ public class Client {
      * <p>
      * Equivalent to calling {@code new Client("localhost", 8080)}.
      *
-     * @see #Client(String, int)
+     * @param configFile the path to the configFile
+     *
+     * @see #Client(String, int, String)
      */
-    public Client(){
-        this("localhost", 8080);
+    public Client(String configFile){
+        this("localhost", 8080, configFile);
     }
 
     /**
@@ -65,31 +66,34 @@ public class Client {
      * Equivalent to calling {@code new Client(host, 8080)}.
      *
      * @param host the hostname or IP address of the server
+     * @param configFile the path to the configFile
      * @throws IllegalArgumentException if the host is {@code null} or empty
      *
-     * @see #Client(String, int)
+     * @see #Client(String, int, String)
      */
-    public Client(String host){ this(host, 8080); }
+    public Client(String host, String configFile){ this(host, 8080, configFile); }
 
     /**
      * Constructs a new {@code Client} with default host.
      * <p>
      * Equivalent to calling {@code new Client("localhost", port)}.
      * @param port the port number on which the server is listening (0–65536)
+     * @param configFile the path to the configFile
      * @throws IllegalArgumentException if the port is out of range
      *
-     * @see #Client(String, int)
+     * @see #Client(String, int, String)
      */
-    public Client(int port){ this("localhost", port); }
+    public Client(int port, String configFile){ this("localhost", port, configFile); }
 
     /**
      * Constructs a new {@code Client} and attempts to connect to the specified host and port.
      *
      * @param host the hostname or IP address of the server
      * @param port the port number on which the server is listening (0–65536)
+     * @param configFile the path to the configFile
      * @throws IllegalArgumentException if the port is out of range or the host is {@code null} or empty
      */
-    public Client(String host, int port) {
+    public Client(String host, int port, String configFile) {
         if(port < 0 || port > 65536)
             throw new IllegalArgumentException("Port must be between 0 and 65536");
 
@@ -99,6 +103,12 @@ public class Client {
             throw new IllegalArgumentException("Host cannot be null or empty");
 
         this.HOST = host;
+
+        if (configFile == null || !configFile.trim().endsWith(".properties"))
+            throw new IllegalArgumentException("Config file cannot be null or empty and must end with '.properties'");
+
+        TRUSTSTORE_PATH = PropertiesUtil.getProperty(configFile, "client.path");
+        TRUSTSTORE_PASSWORD = PropertiesUtil.getProperty(configFile, "client.password");
 
         start();
     }
@@ -146,9 +156,8 @@ public class Client {
      *
      * @return Initialized SSLContext ready for use in secure communications
      */
-    private static SSLContext createSSLContext() {
+    private SSLContext createSSLContext() {
         // Validate inputs
-        //noinspection ConstantValue
         if (TRUSTSTORE_PATH.trim().isEmpty())
             throw new IllegalArgumentException("Truststore path must not be null or empty");
 
@@ -326,15 +335,5 @@ public class Client {
         }
 
         System.out.println("\nClient resources closed successfully.");
-    }
-
-    public static void main(String[] args) {
-        Client client = new Client();
-
-        client.sendCommand(new TestCommand());
-
-        Async.waitFor(5, TimeUnit.SECONDS); //TODO: improve
-
-        client.close();
     }
 }
