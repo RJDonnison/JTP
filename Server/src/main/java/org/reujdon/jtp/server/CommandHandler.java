@@ -1,4 +1,4 @@
-package org.reujdon.jtp.server.handlers;
+package org.reujdon.jtp.server;
 
 import org.json.JSONObject;
 

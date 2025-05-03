@@ -1,13 +1,13 @@
 package org.reujdon.jtp.server;
 
-import org.reujdon.jtp.server.handlers.CommandHandler;
-import org.reujdon.jtp.server.handlers.CommandRegistry;
 import org.reujdon.jtp.shared.PropertiesUtil;
 
 import javax.net.ssl.*;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.security.KeyStore;
+import java.security.SecureRandom;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -85,7 +85,7 @@ public class Server {
         this.running = false;
 
         try {
-            this.clientThreadPool = Executors.newCachedThreadPool();
+            this.clientThreadPool = Executors.newVirtualThreadPerTaskExecutor();
         } catch (Exception e) {
             throw new RuntimeException("Failed to initialize server components", e);
         }
@@ -127,22 +127,32 @@ public class Server {
     }
 
     /**
-     * Creates and initializes an SSLContext for secure communication using TLS protocol.
-     * The SSLContext is configured with key and trust managers loaded from a JKS keystore.
+     * Creates an SSLContext, falling back to a basic context if no keystore is present.
      *
-     * @return Initialized SSLContext ready for use in secure communications
+     * @return Configured SSLContext
+     * @throws RuntimeException if SSLContext creation fails
      */
     private SSLContext createSSLContext() {
         // Validate inputs
-        if (KEYSTORE_PATH.trim().isEmpty())
-            throw new IllegalArgumentException("Keystore path must not be null or empty");
+        if (KEYSTORE_PATH == null || KEYSTORE_PATH.trim().isEmpty()) {
+            try {
+                // Create a basic SSL context without client authentication
+                SSLContext sslContext = SSLContext.getInstance("TLS");
+                sslContext.init(null, null, new SecureRandom());
+                System.out.println("Warning: No keystore provided - using basic SSLContext without certificate verification");
+                return sslContext;
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to create basic SSLContext", e);
+            }
+        }
 
-        FileInputStream fis = null;
+        File keystoreFile = new File(KEYSTORE_PATH);
+        if (!keystoreFile.exists())
+            throw new IllegalArgumentException("Keystore file not found at: " + KEYSTORE_PATH);
 
-        try {
+        try (FileInputStream fis = new FileInputStream(KEYSTORE_PATH)) {
             // Load keystore
             KeyStore keyStore = KeyStore.getInstance("JKS");
-            fis = new FileInputStream(KEYSTORE_PATH);
             keyStore.load(fis, KEYSTORE_PASSWORD.toCharArray());
 
             // Initialize key manager factory
@@ -155,19 +165,11 @@ public class Server {
 
             // Create and initialize SSL context
             SSLContext sslContext = SSLContext.getInstance("TLS");
-            sslContext.init(keyManagerFactory.getKeyManagers(), trustManagerFactory.getTrustManagers(), null);
+            sslContext.init(keyManagerFactory.getKeyManagers(), trustManagerFactory.getTrustManagers(), new SecureRandom());
 
             return sslContext;
         } catch (Exception e) {
             throw new RuntimeException("Failed to initialize server SSLContext", e);
-        } finally {
-            if (fis != null) {
-                try {
-                    fis.close();
-                } catch (IOException e) {
-                    System.err.println("Warning: Failed to close keystore file input stream: " + e.getMessage());
-                }
-            }
         }
     }
 
@@ -365,5 +367,10 @@ public class Server {
             throw new IllegalArgumentException("Handler must not be null");
 
         CommandRegistry.register(command, handler, overrideExisting);
+    }
+
+    public static void main(String[] args) {
+        Server server = new Server("Server/myConfig.properties");
+        server.start();
     }
 }

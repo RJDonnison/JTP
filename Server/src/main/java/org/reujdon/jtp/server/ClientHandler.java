@@ -1,8 +1,7 @@
 package org.reujdon.jtp.server;
 
+import org.json.JSONException;
 import org.json.JSONObject;
-import org.reujdon.jtp.server.handlers.CommandHandler;
-import org.reujdon.jtp.server.handlers.CommandRegistry;
 import org.reujdon.jtp.shared.Error;
 import org.reujdon.jtp.shared.Parse;
 import org.reujdon.jtp.shared.Response;
@@ -82,7 +81,10 @@ class ClientHandler implements Runnable {
         }
         catch (IOException e){
             System.err.println("IOException during client communication: " + e.getMessage());
-        } finally {
+        } catch (JSONException e){
+            sendError("*", "Invalid JSON response: " + e.getMessage()); //TODO: fix
+        }
+        finally {
             close();
         }
     }

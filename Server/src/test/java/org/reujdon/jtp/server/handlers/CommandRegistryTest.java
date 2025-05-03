@@ -3,6 +3,8 @@ package org.reujdon.jtp.server.handlers;
 import jdk.jfr.Description;
 import org.json.JSONObject;
 import org.junit.jupiter.api.Test;
+import org.reujdon.jtp.server.CommandHandler;
+import org.reujdon.jtp.server.CommandRegistry;
 
 import java.util.Map;
 

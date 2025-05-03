@@ -28,11 +28,11 @@
       <option name="ignoreDeprecatedConstructors" value="false" />
       <option name="m_limit" value="5" />
     </inspection_tool>
-    <inspection_tool class="FieldCount" enabled="true" level="WARNING" enabled_by_default="true">
+    <inspection_tool class="FieldCount" enabled="true" level="WEAK WARNING" enabled_by_default="true" editorAttributes="INFO_ATTRIBUTES">
       <option name="m_countConstantFields" value="false" />
-      <option name="m_considerStaticFinalFieldsConstant" value="false" />
+      <option name="m_considerStaticFinalFieldsConstant" value="true" />
       <option name="myCountEnumConstants" value="false" />
-      <option name="m_limit" value="10" />
+      <option name="m_limit" value="15" />
     </inspection_tool>
     <inspection_tool class="JavadocDeclaration" enabled="true" level="WARNING" enabled_by_default="true">
       <option name="ADDITIONAL_TAGS" value="example,Example:" />
