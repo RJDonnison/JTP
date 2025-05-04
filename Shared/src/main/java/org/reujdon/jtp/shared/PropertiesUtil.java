@@ -1,10 +1,15 @@
 package org.reujdon.jtp.shared;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Properties;
 
 public class PropertiesUtil {
+    private static final Logger logger = LoggerFactory.getLogger(PropertiesUtil.class);
+
     /**
      * Utility method to load a property from a .properties file.
      *
@@ -23,7 +28,7 @@ public class PropertiesUtil {
             properties.load(fis);
             return properties.getProperty(property);
         } catch (IOException e) {
-            System.err.println("Error loading properties file: " + filename);
+            logger.error("Error loading properties file: {}", filename);
         }
 
         return null;

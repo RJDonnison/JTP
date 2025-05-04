@@ -1,6 +1,8 @@
 package org.reujdon.jtp.server;
 
 import org.reujdon.jtp.shared.PropertiesUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.*;
 import java.io.File;
@@ -38,6 +40,8 @@ import java.util.concurrent.TimeUnit;
  * @see SSLServerSocket
  */
 public class Server {
+    private static final Logger logger = LoggerFactory.getLogger(Server.class);
+
     private final String KEYSTORE_PATH;
     private final String KEYSTORE_PASSWORD;
 
@@ -110,16 +114,16 @@ public class Server {
 
             // Register shutdown hook for graceful termination
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                System.out.println("Shutdown triggered, closing server...");
+                logger.info("Shutdown triggered, closing server...");
                 close();
             }));
 
-            System.out.println("Server started on port " + this.PORT);
+            logger.info("Server started on port {}", this.PORT);
 
             running = true;
             handleClients();
         } catch (Exception e) {
-            System.err.println("\nFailed to start Server: " + e.getMessage());
+            logger.error("Failed to start Server: {}", e.getMessage());
             throw new RuntimeException("Server initialization failed", e);
         } finally {
             close();
@@ -139,7 +143,7 @@ public class Server {
                 // Create a basic SSL context without client authentication
                 SSLContext sslContext = SSLContext.getInstance("TLS");
                 sslContext.init(null, null, new SecureRandom());
-                System.out.println("Warning: No keystore provided - using basic SSLContext without certificate verification");
+                logger.warn("No keystore provided - using basic SSLContext without certificate verification");
                 return sslContext;
             } catch (Exception e) {
                 throw new RuntimeException("Failed to create basic SSLContext", e);
@@ -184,7 +188,7 @@ public class Server {
         if (serverSocket == null || serverSocket.isClosed())
             throw new IllegalStateException("Server socket is closed so cannot handle clients.");
 
-        System.out.println("Waiting for clients to connect...");
+        logger.info("Waiting for clients to connect...");
 
         while (running && !serverSocket.isClosed()) {
             try {
@@ -192,21 +196,21 @@ public class Server {
                 SSLSocket clientSocket = (SSLSocket) serverSocket.accept();
 
                 String clientId = clientSocket.getRemoteSocketAddress().toString();
-                System.out.println("\nNew connection attempt from: " + clientId);
+                logger.info("New connection attempt from: {}", clientId);
 
                 // Create and register client handler
                 ClientHandler clientHandler = new ClientHandler(clientSocket, this);
                 activeClients.put(clientId, clientHandler);
                 clientThreadPool.execute(clientHandler);
 
-                System.out.println("New client connected, ID: " + clientId + ". Active clients: " + activeClients.size());
+                logger.info("New client connected, ID: {}. Active clients: {}", clientId, activeClients.size());
             } catch (SSLException e) {
-                System.err.println("SSL handshake failed with client: " + e.getMessage());
+                logger.error("SSL handshake failed with client: {}", e.getMessage());
             } catch (IOException e) {
                 if (running)
-                    System.err.println("Fatal I/O error while accepting connections");
+                    logger.error("Fatal I/O error while accepting connections");
                 else
-                    System.out.println("I/O error occurred during server shutdown");
+                    logger.warn("I/O error occurred during server shutdown");
 
                 throw e;
             }
@@ -228,7 +232,7 @@ public class Server {
 
         ClientHandler removedHandler = activeClients.remove(clientId);
         if (removedHandler != null)
-            System.out.println("\nClient " + clientId + " disconnected. Active clients: " + activeClients.size());
+            logger.info("Client {} disconnected. Active clients: {}", clientId, activeClients.size());
     }
 
     /**
@@ -246,16 +250,16 @@ public class Server {
      */
     public void close() {
         if (!running)
-            System.out.println("Server is closing or closed");
+            logger.info("Server is closing or closed");
 
         running = false;
-        System.out.println("\nClosing server...");
+        logger.info("\nClosing server...");
 
         closeAllClients();
         shutdownThreadPool();
         closeServerSocket();
 
-        System.out.println("Server shutdown completed successfully");
+        logger.info("Server shutdown completed successfully");
     }
 
     /**
@@ -266,11 +270,11 @@ public class Server {
     private void closeAllClients() {
         int clientCount = activeClients.size();
         if (clientCount == 0) {
-            System.out.println("No active clients to close");
+            logger.info("No active clients to close");
             return;
         }
 
-        System.out.println("Closing " + clientCount + " active client connections...");
+        logger.info("Closing {} active client connections...", clientCount);
         int closedCount = 0;
         int failedCount = 0;
 
@@ -278,15 +282,15 @@ public class Server {
             try {
                 entry.getValue().close();
                 closedCount++;
-                System.out.println("Closed connection for client: " + entry.getKey());
+                logger.info("Closed connection for client: {}", entry.getKey());
             } catch (Exception e) {
                 failedCount++;
-                System.err.println("Failed to close client: " + entry.getKey());
+                logger.warn("Failed to close client: {}", entry.getKey());
             }
         }
 
         activeClients.clear();
-        System.out.println("Client cleanup completed: " + closedCount + " closed, " + failedCount + " failed.");
+        logger.info("Client cleanup completed: {} closed, {} failed.", closedCount, failedCount);
     }
 
     /**
@@ -295,25 +299,25 @@ public class Server {
      */
     private void shutdownThreadPool() {
         if (clientThreadPool == null) {
-            System.out.println("Thread pool not initialized");
+            logger.warn("Thread pool not initialized");
             return;
         }
 
         try {
-            System.out.println("Initiating thread pool shutdown...");
+            logger.info("Initiating thread pool shutdown...");
             clientThreadPool.shutdown(); // Disable new tasks
 
             // Wait a while for existing tasks to terminate
             if (!clientThreadPool.awaitTermination(5, TimeUnit.SECONDS)) {
-                System.out.println("Forcing thread pool shutdown...");
+                logger.warn("Forcing thread pool shutdown...");
                 clientThreadPool.shutdownNow(); // Cancel currently executing tasks
 
                 // Wait again for tasks to respond to cancellation
                 if (!clientThreadPool.awaitTermination(5, TimeUnit.SECONDS))
-                    System.err.println("Thread pool did not terminate properly");
+                    logger.warn("Thread pool did not terminate properly");
             }
         } catch (InterruptedException e) {
-            System.err.println("Thread pool shutdown interrupted");
+            logger.error("Thread pool shutdown interrupted");
             Thread.currentThread().interrupt();
             clientThreadPool.shutdownNow();
         }
@@ -324,17 +328,17 @@ public class Server {
      */
     private void closeServerSocket() {
         if (serverSocket == null) {
-            System.out.println("Server socket not initialized");
+            logger.warn("Server socket not initialized");
             return;
         }
 
         try {
             if (!serverSocket.isClosed()) {
-                System.out.println("Closing server socket...");
+                logger.info("Closing server socket...");
                 serverSocket.close();
             }
         } catch (IOException e) {
-            System.err.println("Error closing server socket." + e.getMessage());
+            logger.error("Error closing server socket: {}", e.getMessage());
         }
     }
 

@@ -5,6 +5,8 @@ import org.json.JSONObject;
 import org.reujdon.jtp.shared.Error;
 import org.reujdon.jtp.shared.Parse;
 import org.reujdon.jtp.shared.Response;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reujdon.async.Task;
 
 import javax.net.ssl.SSLSocket;
@@ -31,6 +33,8 @@ import java.util.Map;
  * @see Runnable
  */
 class ClientHandler implements Runnable {
+    private static final Logger logger = LoggerFactory.getLogger(ClientHandler.class);
+
     private final SSLSocket clientSocket;
     private final Server server;
 
@@ -80,7 +84,7 @@ class ClientHandler implements Runnable {
             }
         }
         catch (IOException e){
-            System.err.println("IOException during client communication: " + e.getMessage());
+            logger.error("IOException during client communication: {}", e.getMessage());
         } catch (JSONException e){
             sendError("*", "Invalid JSON response: " + e.getMessage()); //TODO: fix
         }
@@ -116,7 +120,7 @@ class ClientHandler implements Runnable {
         }
 
         String command = params.get("command").toString().trim();
-        System.out.println("\nClient: " + clientId + ", Sent command: " + command);
+        logger.info("Client: {}, Sent command: {}", clientId, command);
 
         // Get and execute handler
         CommandHandler handler = CommandRegistry.getHandler(command);
@@ -127,7 +131,7 @@ class ClientHandler implements Runnable {
             }
 
             JSONObject response = handler.handle(params);
-            System.out.println("Command " + command + " executed successfully for client " + clientId);
+            logger.info("Command {} executed successfully for client {}", command, clientId);
             sendResponse(commandId, response);
         } catch (Exception e) {
             sendError(commandId, "Command execution failed: " + e.getMessage());
@@ -157,7 +161,7 @@ class ClientHandler implements Runnable {
      * @param message a description of the error
      */
     private void sendError(String id, String message) {
-        System.err.println("Error with client: " + clientId + ", request: " + id + "\nMessage: " + message);
+        logger.error("Error with client: {}, request: {}\nMessage: {}", clientId, id, message);
         out.println(new Error(id, message).toJSON());
     }
 
@@ -178,7 +182,7 @@ class ClientHandler implements Runnable {
 
             if (server != null) server.removeClient(clientId);
         } catch (IOException e) {
-            System.err.println("Error closing client connection: " + e.getMessage());
+            logger.error("Error closing client connection: {}", e.getMessage());
         }
     }
 }

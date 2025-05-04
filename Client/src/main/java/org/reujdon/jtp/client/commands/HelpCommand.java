@@ -11,14 +11,14 @@ public class HelpCommand extends Request {
 
     @Override
     public void onSuccess(Map<String, Object> response) {
-        System.out.println("Commands available:\n");
+        logger.info("Commands available:");
 
         for (Map.Entry<String, Object> entry : response.entrySet())
-            System.out.println(entry.getKey() + ": " + entry.getValue());
+            logger.info("{}: {}", entry.getKey(), entry.getValue());
     }
 
     @Override
     public void onTimeout() {
-        System.err.println("Commands available:\n");
+        logger.error("Getting help commands timed out.");
     }
 }

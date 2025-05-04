@@ -1,5 +1,8 @@
 package org.reujdon.jtp.shared;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Map;
 
 /**
@@ -25,6 +28,7 @@ import java.util.Map;
  * @see MessageType#REQUEST
  */
 public abstract class Request extends Message {
+    protected static final Logger logger = LoggerFactory.getLogger(Request.class);
     private final long timeout;
 
     /**
@@ -131,7 +135,7 @@ public abstract class Request extends Message {
      * @param error A descriptive error message explaining the failure
      */
     public void onError(String error){
-        System.err.println("Error: " + error);
+        logger.error("Error: {}", error);
     }
 
     /**
