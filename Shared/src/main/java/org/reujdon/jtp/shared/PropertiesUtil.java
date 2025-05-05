@@ -13,11 +13,13 @@ public class PropertiesUtil {
     /**
      * Utility method to load a property from a .properties file.
      *
-     * @param filename the name of the properties file (without the .properties extension)
-     * @param property the property whose associated value is to be retrieved
-     * @return the value corresponding to the given key, or null if the key is not found or an error occurs
+     * @param filename the name of the properties file
+     * @param property the property whose associated string is to be retrieved
+     * @return the string corresponding to the given key, or null if the key is not found or an error occurs
+     *
+     * @see #getInteger(String, String)
      */
-    public static String getProperty(String filename, String property) {
+    public static String getString(String filename, String property) {
         Properties properties = new Properties();
 
         // Ensure the filename has the .properties extension
@@ -29,6 +31,33 @@ public class PropertiesUtil {
             return properties.getProperty(property);
         } catch (IOException e) {
             logger.error("Error loading properties file: {}", filename);
+        }
+
+        return null;
+    }
+
+    /**
+     * Utility method to load an integer from a .properties file.
+     *
+     * @param filename the name of the properties file
+     * @param property the property whose associated integer is to be retrieved
+     * @return the integer corresponding to the given key, or null if the key is not found or an error occurs
+     *
+     * @see #getString(String, String)
+     */
+    public static Integer getInteger(String filename, String property) {
+        Properties properties = new Properties();
+
+        if (!filename.endsWith(".properties"))
+            filename += ".properties";
+
+        try (FileInputStream fis = new FileInputStream(filename)) {
+            properties.load(fis);
+            return Integer.valueOf(properties.getProperty(property));
+        } catch (IOException e) {
+            logger.error("Error loading properties file: {}", filename);
+        } catch (NumberFormatException e) {
+            logger.error("Error parsing property: {}", property);
         }
 
         return null;

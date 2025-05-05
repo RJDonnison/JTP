@@ -25,25 +25,72 @@ import java.util.Objects;
 
 /**
  * A secure client that connects to a server over SSL/TLS.
- *
- * <p>The client provides the following features:</p>
+ * <p>
+ * Configuration can be provided through either:
  * <ul>
- *   <li>Secure communication using SSL/TLS protocol</li>
- *   <li>Asynchronous handling of server responses</li>
- *   <li>Timeout management for requests</li>
- *   <li>Ability to send custom commands to the server using the {@link #sendCommand(Request)} method</li>
+ *   <li>Environment variables (highest priority)</li>
+ *   <li>Properties file (fallback)</li>
  * </ul>
  *
- * @see SSLContext
+ * <table border="1">
+ *   <caption>Configuration Options</caption>
+ *   <thead>
+ *     <tr>
+ *       <th>Description</th>
+ *       <th>Environment Variable</th>
+ *       <th>Properties Key</th>
+ *       <th>Required</th>
+ *       <th>Default</th>
+ *     </tr>
+ *   </thead>
+ *   <tbody>
+ *     <tr>
+ *       <td>Server hostname or IP address</td>
+ *       <td>{@code CLIENT_HOST}</td>
+ *       <td>{@code client.host}</td>
+ *       <td>Yes</td>
+ *       <td>None</td>
+ *     </tr>
+ *     <tr>
+ *       <td>Server port</td>
+ *       <td>{@code CLIENT_PORT}</td>
+ *       <td>{@code client.port}</td>
+ *       <td>Yes</td>
+ *       <td>None</td>
+ *     </tr>
+ *     <tr>
+ *       <td>Path to SSL truststore file</td>
+ *       <td>{@code CLIENT_TRUSTSTORE_PATH}</td>
+ *       <td>{@code client.path}</td>
+ *       <td>Yes</td>
+ *       <td>None</td>
+ *     </tr>
+ *     <tr>
+ *       <td>Password for the truststore</td>
+ *       <td>{@code CLIENT_TRUSTSTORE_PASSWORD}</td>
+ *       <td>{@code client.password}</td>
+ *       <td>Yes</td>
+ *       <td>None</td>
+ *     </tr>
+ *   </tbody>
+ * </table>
+ * <p>
+ * <b>Note:</b> Port values must be between 0-65535.
  */
 public class Client {
     private static final Logger logger = LoggerFactory.getLogger(Client.class);
 
-    private final String TRUSTSTORE_PATH;
-    private final String TRUSTSTORE_PASSWORD;
+    // Constants for environment variable keys
+    private static final String ENV_HOST = "CLIENT_HOST";
+    private static final String ENV_PORT = "CLIENT_PORT";
+    private static final String ENV_TRUSTSTORE_PATH = "CLIENT_TRUSTSTORE_PATH";
+    private static final String ENV_TRUSTSTORE_PASSWORD = "CLIENT_TRUSTSTORE_PASSWORD";
+    private static final String DEFAULT_CONFIG_FILE = "client.properties";
 
-    private final String HOST;
-    private final int PORT;
+    private String host;
+    private int port = -1;
+    private String truststorePath;
+    private String truststorePassword;
 
     private SSLSocket sslSocket;
 
@@ -56,69 +103,124 @@ public class Client {
     private final HashMap<String, Request> pendingResponses = new HashMap<>();
 
     /**
-     * Constructs a new {@code Client} with default connection parameters.
+     * Constructs a new {@code Client} with default config file.
      * <p>
-     * Equivalent to calling {@code new Client("localhost", 8080)}.
+     * Configuration will be loaded from:
+     * <ol>
+     *   <li>Environment variables</li>
+     *   <li>Default config file ({@code client.properties})</li>
+     * </ol>
      *
-     * @param configFile the path to the configFile
+     * @throws IllegalArgumentException if required configuration is missing or invalid
      *
-     * @see #Client(String, int, String)
+     * @see #Client(String)
      */
-    public Client(String configFile){
-        this("localhost", 8080, configFile);
+    public Client(){ this(null); }
+
+    /**
+     * Constructs a new {@code Client} with configuration from the specified file.
+     * <p>
+     * Configuration will be loaded from:
+     * <ol>
+     *   <li>Environment variables</li>
+     *   <li>The specified config file</li>
+     * </ol>
+     *
+     * @param configFile the path to the configuration file (maybe null)
+     * @throws IllegalArgumentException if required configuration is missing or invalid
+     */
+    public Client(String configFile) {
+        loadConfig(configFile);
+
+        start();
     }
 
     /**
-     * Constructs a new {@code Client} with default port.
-     * <p>
-     * Equivalent to calling {@code new Client(host, 8080)}.
+     * Loads configuration from environment variables and properties file.
      *
-     * @param host the hostname or IP address of the server
-     * @param configFile the path to the configFile
-     * @throws IllegalArgumentException if the host is {@code null} or empty
-     *
-     * @see #Client(String, int, String)
+     * @param configFile the path to the properties file (may be null)
      */
-    public Client(String host, String configFile){ this(host, 8080, configFile); }
+    private void loadConfig(String configFile){
+        loadFromEnvVars();
+
+        if (hasMissingConfig()) {
+            if (configFile == null)
+                configFile = DEFAULT_CONFIG_FILE;
+
+            loadFromPropertiesFile(configFile);
+        }
+
+        validateConfig();
+    }
 
     /**
-     * Constructs a new {@code Client} with default host.
-     * <p>
-     * Equivalent to calling {@code new Client("localhost", port)}.
-     * @param port the port number on which the server is listening (0–65536)
-     * @param configFile the path to the configFile
-     * @throws IllegalArgumentException if the port is out of range
-     *
-     * @see #Client(String, int, String)
+     * Checks if any required configuration is missing.
      */
-    public Client(int port, String configFile){ this("localhost", port, configFile); }
+    private boolean hasMissingConfig() {
+        return host == null || port == -1 || truststorePath == null || truststorePassword == null;
+    }
 
     /**
-     * Constructs a new {@code Client} and attempts to connect to the specified host and port.
-     *
-     * @param host the hostname or IP address of the server
-     * @param port the port number on which the server is listening (0–65536)
-     * @param configFile the path to the configFile
-     * @throws IllegalArgumentException if the port is out of range or the host is {@code null} or empty
+     * Loads configuration from environment variables.
      */
-    public Client(String host, int port, String configFile) {
-        if(port < 0 || port > 65536)
-            throw new IllegalArgumentException("Port must be between 0 and 65536");
+    private void loadFromEnvVars() {
+        String envHost = System.getenv(ENV_HOST);
+        if (envHost != null && !envHost.trim().isEmpty())
+            this.host = envHost.trim();
 
-        this.PORT = port;
+        String envPort = System.getenv(ENV_PORT);
+        if (envPort != null) {
+            try {
+                this.port = Integer.parseInt(envPort);
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Invalid PORT in env vars", e);
+            }
+        }
 
-        if(host == null || host.trim().isEmpty())
-            throw new IllegalArgumentException("Host cannot be null or empty");
+        String envTruststorePath = System.getenv(ENV_TRUSTSTORE_PATH);
+        if (envTruststorePath != null)
+            this.truststorePath = envTruststorePath;
 
-        this.HOST = host;
+        String envTruststorePassword = System.getenv(ENV_TRUSTSTORE_PASSWORD);
+        if (envTruststorePassword != null)
+            this.truststorePassword = envTruststorePassword;
+    }
 
-        if (configFile == null || !configFile.trim().endsWith(".properties"))
-            throw new IllegalArgumentException("Config file cannot be null or empty and must end with '.properties'");
+    /**
+     * Loads configuration from properties file.
+     *
+     * @param configFile the path to the properties file
+     * @throws IllegalArgumentException if the file is invalid
+     */
+    private void loadFromPropertiesFile(String configFile) {
+        if (this.host == null)
+            this.host = PropertiesUtil.getString(configFile, "client.host");
 
-        TRUSTSTORE_PATH = PropertiesUtil.getProperty(configFile, "client.path");
-        TRUSTSTORE_PASSWORD = PropertiesUtil.getProperty(configFile, "client.password");
+        if (this.port == -1)
+            this.port = PropertiesUtil.getInteger(configFile, "client.port");
 
-        start();
+        if (this.truststorePath == null)
+            this.truststorePath = PropertiesUtil.getString(configFile, "client.path");
+
+        if (this.truststorePassword == null)
+            this.truststorePassword = PropertiesUtil.getString(configFile, "client.password");
+
+    }
+
+    /**
+     * Validates the loaded configuration.
+     *
+     * @throws IllegalArgumentException if any configuration is invalid
+     */
+    private void validateConfig() {
+        if (this.host == null || this.host.trim().isEmpty())
+            throw new IllegalArgumentException("Host must be set via " + ENV_HOST + " or properties file");
+
+        if (this.port < 0 || this.port > 65536)
+            throw new IllegalArgumentException("PORT must be between 0 and 65536 and set via " + ENV_PORT + " or properties file");
+
+        if (this.truststorePath == null || this.truststorePassword == null)
+            throw new IllegalArgumentException("Truststore path/password must be set via " + ENV_TRUSTSTORE_PATH + " : " + ENV_TRUSTSTORE_PASSWORD + " or properties file");
     }
 
     /**
@@ -138,14 +240,14 @@ public class Client {
         try{
             SSLContext sslContext = createSSLContext();
             SSLSocketFactory sslSocketFactory = sslContext.getSocketFactory();
-            sslSocket = (SSLSocket) sslSocketFactory.createSocket(HOST, PORT);
+            sslSocket = (SSLSocket) sslSocketFactory.createSocket(host, port);
 
             sslSocket.setEnabledCipherSuites(sslSocket.getSupportedCipherSuites());
 
             in = new BufferedReader(new InputStreamReader(sslSocket.getInputStream()));
             out = new PrintWriter(sslSocket.getOutputStream(), true);
 
-            logger.info("Connected to server at {} : {}\n", HOST, PORT);
+            logger.info("Connected to server at {} : {}\n", host, port);
 
             running = true;
         } catch (Exception e) {
@@ -167,19 +269,19 @@ public class Client {
      */
     private SSLContext createSSLContext() {
         try {
-            if (TRUSTSTORE_PATH == null || TRUSTSTORE_PATH.trim().isEmpty()) {
+            if (truststorePath == null || truststorePath.trim().isEmpty()) {
                 logger.warn("No truststore configured - using default SSLContext with standard certificate validation");
                 return SSLContext.getDefault();
             }
 
-            File truststoreFile = new File(TRUSTSTORE_PATH);
+            File truststoreFile = new File(truststorePath);
             if (!truststoreFile.exists())
-                throw new FileNotFoundException("Truststore file not found at: " + TRUSTSTORE_PATH);
+                throw new FileNotFoundException("Truststore file not found at: " + truststorePath);
 
-            try (FileInputStream fis = new FileInputStream(TRUSTSTORE_PATH)) {
+            try (FileInputStream fis = new FileInputStream(truststorePath)) {
                 // Load the truststore
                 KeyStore trustStore = KeyStore.getInstance("JKS");
-                trustStore.load(fis, TRUSTSTORE_PASSWORD.toCharArray());
+                trustStore.load(fis, truststorePassword.toCharArray());
 
                 // Initialize trust manager factory
                 TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());

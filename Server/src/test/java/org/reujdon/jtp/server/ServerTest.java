@@ -1,15 +1,16 @@
 package org.reujdon.jtp.server;
 
 import jdk.jfr.Description;
-import org.json.JSONObject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.reujdon.jtp.shared.messaging.Response;
 
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+//TODO: fix
 class ServerTest {
     private Server server;
     private CommandHandler handler;
@@ -53,7 +54,7 @@ class ServerTest {
 @Description("Command for testing")
 class TestCommandHandler implements CommandHandler {
     @Override
-    public JSONObject handle(Map<String, Object> params) {
+    public Response handle(Map<String, Object> params) {
         return null;
     }
 }

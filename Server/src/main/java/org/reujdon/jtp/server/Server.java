@@ -54,6 +54,7 @@ public class Server {
 
     private boolean running;
 
+//    TODO: rework configs
     /**
      * Constructs a Server instance with the default port 8080.
      *
@@ -83,8 +84,8 @@ public class Server {
         if (configFile == null || !configFile.trim().endsWith(".properties"))
             throw new IllegalArgumentException(String.format("Invalid config file: %s", configFile));
 
-        KEYSTORE_PATH = PropertiesUtil.getProperty(configFile, "server.path");
-        KEYSTORE_PASSWORD = PropertiesUtil.getProperty(configFile, "server.password");
+        KEYSTORE_PATH = PropertiesUtil.getString(configFile, "server.path");
+        KEYSTORE_PASSWORD = PropertiesUtil.getString(configFile, "server.password");
 
         this.running = false;
 
