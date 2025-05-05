@@ -1,4 +1,4 @@
-package org.reujdon.jtp.shared;
+package org.reujdon.jtp.shared.messaging;
 
 import org.json.JSONObject;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,7 +37,7 @@ class ResponseTest {
 
     @Test
     void testAddNullParams() {
-        response.addParams(null);
+        response.addParams((JSONObject) null);
 
         assertEquals(0, response.params.size());
     }

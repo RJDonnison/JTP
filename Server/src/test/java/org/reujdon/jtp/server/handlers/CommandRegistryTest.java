@@ -1,10 +1,10 @@
 package org.reujdon.jtp.server.handlers;
 
 import jdk.jfr.Description;
-import org.json.JSONObject;
 import org.junit.jupiter.api.Test;
 import org.reujdon.jtp.server.CommandHandler;
 import org.reujdon.jtp.server.CommandRegistry;
+import org.reujdon.jtp.shared.messaging.Response;
 
 import java.util.Map;
 
@@ -91,14 +91,14 @@ public class CommandRegistryTest {
 @Description("Command for testing")
 class TestCommandHandler implements CommandHandler {
     @Override
-    public JSONObject handle(Map<String, Object> params) {
+    public Response handle(Map<String, Object> params) {
         return null;
     }
 }
 
 class DescriptionlessCommandHandler implements CommandHandler {
     @Override
-    public JSONObject handle(Map<String, Object> params) {
+    public Response handle(Map<String, Object> params) {
         return null;
     }
 }

@@ -1,6 +1,6 @@
 package org.reujdon.jtp.client.commands;
 
-import org.reujdon.jtp.shared.Request;
+import org.reujdon.jtp.shared.messaging.Request;
 
 import java.util.Map;
 

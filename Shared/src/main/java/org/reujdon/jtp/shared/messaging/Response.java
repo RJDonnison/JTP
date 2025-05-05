@@ -1,6 +1,8 @@
-package org.reujdon.jtp.shared;
+package org.reujdon.jtp.shared.messaging;
 
 import org.json.JSONObject;
+
+import java.util.Map;
 
 /**
  * Represents a response message in the transfer protocol.
@@ -33,6 +35,13 @@ import org.json.JSONObject;
  */
 public class Response extends Message {
     /**
+     * Constructs an empty Response message
+     */
+    public Response(){
+        super(MessageType.RESPONSE);
+    }
+
+    /**
      * Constructs a Response message with the specified ID.
      *
      * @param id The response identifier (should match the original request ID)
@@ -56,18 +65,24 @@ public class Response extends Message {
     }
 
     /**
-     * Adds multiple parameters from a JSONObject to this response.
+     * Constructs a Response message with the specified initial data.
      *
-     * <p>This method safely handles null input by doing nothing. All key-value pairs
-     * from the JSONObject will be added to the response parameters.</p>
-     *
-     * @param data JSONObject containing parameters to add (can be null)
+     * @param data Initial response data as a JSONObject (can be null)
      */
-    protected void addParams(JSONObject data) {
-        if (data == null)
-            return;
+    public Response(JSONObject data){
+        super(MessageType.RESPONSE);
 
-        for (String key : data.keySet())
-            params.put(key, data.get(key));
+        this.addParams(data);
+    }
+
+    /**
+     * Constructs a Response message with the specified initial data.
+     *
+     * @param data Initial response data as a {@code Map<String, Object>} (can be null)
+     */
+    public Response(Map<String, ?> data){
+        super(MessageType.RESPONSE);
+
+        this.addParams(data);
     }
 }

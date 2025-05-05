@@ -1,4 +1,4 @@
-package org.reujdon.jtp.shared;
+package org.reujdon.jtp.shared.messaging;
 
 import org.junit.jupiter.api.Test;
 
@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class ErrorTest {
     @Test
     void testInitialization() {
-        Error error = new Error("Test Error");
+        org.reujdon.jtp.shared.messaging.Error error = new org.reujdon.jtp.shared.messaging.Error("Test Error");
 
         assertNotNull(error.getId());
         assertEquals(MessageType.ERROR, error.getType());
@@ -19,7 +19,7 @@ class ErrorTest {
 
     @Test
     void testInitializationWithId() {
-        Error error = new Error("Test", "Test Error");
+        org.reujdon.jtp.shared.messaging.Error error = new Error("Test", "Test Error");
 
         assertEquals("Test", error.getId());
         assertEquals(MessageType.ERROR, error.getType());

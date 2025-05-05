@@ -1,4 +1,4 @@
-package org.reujdon.jtp.shared;
+package org.reujdon.jtp.shared.messaging;
 
 import org.json.JSONObject;
 import org.junit.jupiter.api.BeforeEach;

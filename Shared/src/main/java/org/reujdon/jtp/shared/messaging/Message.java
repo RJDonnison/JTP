@@ -1,4 +1,4 @@
-package org.reujdon.jtp.shared;
+package org.reujdon.jtp.shared.messaging;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -22,7 +22,7 @@ import java.util.UUID;
  * @see JSONObject
  */
 abstract class Message {
-    private final String id;
+    private String id;
     private final MessageType type;
 
     protected final Map<String, Object> params = new HashMap<>();
@@ -61,6 +61,10 @@ abstract class Message {
         return id;
     }
 
+    public void setId(String id) {
+        this.id = id;
+    }
+
     public MessageType getType() {
         return type;
     }
@@ -72,7 +76,7 @@ abstract class Message {
      * @param value the parameter value to associate with the key (can be null)
      * @throws IllegalArgumentException if the key is invalid
      */
-    protected void addParam(String key, Object value) {
+    public void addParam(String key, Object value) {
         if (key.trim().isEmpty())
             throw new IllegalArgumentException("Key cannot be empty.");
 
@@ -80,6 +84,34 @@ abstract class Message {
             throw new IllegalArgumentException("Duplicate key: " + key);
 
         params.put(key, value);
+    }
+
+    /**
+     * Adds multiple parameters from a {@code Map<String, Object>} to this response.
+     *
+     * @param params Map containing parameters to add (can be null)
+     */
+    public void addParams(Map<String, ?> params) {
+        if (params == null)
+            return;
+
+        this.params.putAll(params);
+    }
+
+    /**
+     * Adds multiple parameters from a JSONObject to this response.
+     *
+     * <p>This method safely handles null input by doing nothing. All key-value pairs
+     * from the JSONObject will be added to the response parameters.</p>
+     *
+     * @param data JSONObject containing parameters to add (can be null)
+     */
+    protected void addParams(JSONObject data) {
+        if (data == null)
+            return;
+
+        for (String key : data.keySet())
+            params.put(key, data.get(key));
     }
 
     /**
@@ -93,7 +125,7 @@ abstract class Message {
      * @throws IllegalArgumentException if the key does not exist in the parameters map
      * @see #addParam(String, Object)
      */
-    protected void setParam(String key, Object value) {
+    public void setParam(String key, Object value) {
         if (!params.containsKey(key))
             throw new IllegalArgumentException("Map is missing key: " + key);
 

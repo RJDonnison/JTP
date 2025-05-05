@@ -1,4 +1,4 @@
-package org.reujdon.jtp.shared;
+package org.reujdon.jtp.shared.messaging;
 
 /**
  * Enumerates the types of messages supported in the transfer protocol.

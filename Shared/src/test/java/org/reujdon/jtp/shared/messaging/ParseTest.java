@@ -1,11 +1,13 @@
-package org.reujdon.jtp.shared;
+package org.reujdon.jtp.shared.messaging;
 
 import org.json.JSONObject;
 import org.junit.jupiter.api.Test;
+import org.reujdon.jtp.shared.Parse;
 
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ParseTest {
     @Test

@@ -1,10 +1,10 @@
 package org.reujdon.jtp.server.handlers;
 
 import jdk.jfr.Description;
-import org.json.JSONObject;
 import org.reujdon.jtp.server.CommandHandler;
 import org.reujdon.jtp.shared.Permission;
 import org.reujdon.jtp.shared.TokenUtil;
+import org.reujdon.jtp.shared.messaging.Response;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -18,7 +18,7 @@ public class AuthCommandHandler implements CommandHandler {
     }
 
     @Override
-    public JSONObject handle(Map<String, Object> params) {
+    public Response handle(Map<String, Object> params) {
         if (!params.containsKey("key"))
             throw new IllegalArgumentException("No key provided");
 
@@ -27,12 +27,13 @@ public class AuthCommandHandler implements CommandHandler {
         if (!KEYS.containsKey(key))
             throw new IllegalStateException("Key invalid: " + key);
 
+//        TODO:
 //        Store permissions
 //        Generate and store token
 
-        Map<String, String> result = new HashMap<>();
-        result.put("token", TokenUtil.generateSessionToken());
+        Response response = new Response();
+        response.addParam("token", TokenUtil.generateSessionToken());
 
-        return new JSONObject(result);
+        return response;
     }
 }

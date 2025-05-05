@@ -1,11 +1,12 @@
 package org.reujdon.jtp.client;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.reujdon.jtp.client.commands.AuthCommand;
-import org.reujdon.jtp.shared.MessageType;
 import org.reujdon.jtp.shared.Parse;
 import org.reujdon.jtp.shared.PropertiesUtil;
-import org.reujdon.jtp.shared.Request;
+import org.reujdon.jtp.shared.messaging.MessageType;
+import org.reujdon.jtp.shared.messaging.Request;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reujdon.async.Async;
@@ -20,6 +21,7 @@ import java.security.KeyStore;
 import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * A secure client that connects to a server over SSL/TLS.
@@ -205,6 +207,12 @@ public class Client {
                 JSONObject response = new JSONObject(line);
                 String id = response.optString("id", null);
 
+                if (Objects.equals(id, "*"))
+                {
+                    Map<String, Object> params = Parse.Params(response);
+                    logger.error("Server error with unknown id: {}", params.get("message").toString());
+                }
+
                 if (id != null && pendingResponses.containsKey(id)) {
                     Request request = pendingResponses.get(id);
                     if (request == null)
@@ -221,6 +229,8 @@ public class Client {
                 logger.error("Error while listening for responses: {}", e.getMessage());
             else
                 logger.info("Listening thread closed.");
+        } catch (JSONException e) {
+            logger.error("Error parsing JSON: {}", e.getMessage());
         } catch (Exception e) {
             logger.error("Unexpected error while handling response: {}", e.getMessage());
         }

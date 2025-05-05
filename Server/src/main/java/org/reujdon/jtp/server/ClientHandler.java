@@ -2,9 +2,9 @@ package org.reujdon.jtp.server;
 
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.reujdon.jtp.shared.Error;
 import org.reujdon.jtp.shared.Parse;
-import org.reujdon.jtp.shared.Response;
+import org.reujdon.jtp.shared.messaging.Error;
+import org.reujdon.jtp.shared.messaging.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reujdon.async.Task;
@@ -86,7 +86,7 @@ class ClientHandler implements Runnable {
         catch (IOException e){
             logger.error("IOException during client communication: {}", e.getMessage());
         } catch (JSONException e){
-            sendError("*", "Invalid JSON response: " + e.getMessage()); //TODO: fix
+            sendError("*", "Invalid JSON response: " + e.getMessage());
         }
         finally {
             close();
@@ -130,7 +130,7 @@ class ClientHandler implements Runnable {
                 return;
             }
 
-            JSONObject response = handler.handle(params);
+            Response response = handler.handle(params);
             logger.info("Command {} executed successfully for client {}", command, clientId);
             sendResponse(commandId, response);
         } catch (Exception e) {
@@ -140,14 +140,12 @@ class ClientHandler implements Runnable {
 
     /**
      * Sends a successful response to the client.
-     * <p>
-     * Constructs a {@link Response} object using the given command ID and parameters.
      *
      * @param commandID the id of the command this response is related to
-     * @param params    the {@link JSONObject} containing the response data
+     * @param response  the {@link Response} containing the response data
      */
-    private void sendResponse(String commandID, JSONObject params) {
-        Response response = new Response(commandID, params);
+    private void sendResponse(String commandID, Response response) {
+        response.setId(commandID);
 
         out.println(response.toJSON());
     }
@@ -161,7 +159,7 @@ class ClientHandler implements Runnable {
      * @param message a description of the error
      */
     private void sendError(String id, String message) {
-        logger.error("Error with client: {}, request: {}\nMessage: {}", clientId, id, message);
+        logger.error("Error with client: {}, request: {} | {}", clientId, id, message);
         out.println(new Error(id, message).toJSON());
     }
 

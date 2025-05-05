@@ -1,6 +1,6 @@
 package org.reujdon.jtp.client.commands;
 
-import org.reujdon.jtp.shared.Request;
+import org.reujdon.jtp.shared.messaging.Request;
 
 import java.util.Map;
 
@@ -13,6 +13,7 @@ public class AuthCommand extends Request {
 
     @Override
     public void onSuccess(Map<String, Object> response) {
+//        TODO:
 //        Store token
 
 //        System.out.println(response.get("token"));
