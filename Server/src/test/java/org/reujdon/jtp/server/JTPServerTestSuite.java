@@ -8,6 +8,6 @@ import org.reujdon.jtp.server.handlers.CommandRegistryTest;
 @SelectClasses({
         CommandRegistryTest.class
 })
-public class ServerTestSuite {
+public class JTPServerTestSuite {
     // This class serves as a test suite container
 }

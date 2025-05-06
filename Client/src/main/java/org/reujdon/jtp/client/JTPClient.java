@@ -77,8 +77,8 @@ import java.util.Objects;
  * <p>
  * <b>Note:</b> Port values must be between 0-65535.
  */
-public class Client {
-    private static final Logger logger = LoggerFactory.getLogger(Client.class);
+public class JTPClient {
+    private static final Logger logger = LoggerFactory.getLogger(JTPClient.class);
 
     // Constants for environment variable keys
     private static final String ENV_HOST = "CLIENT_HOST";
@@ -113,9 +113,9 @@ public class Client {
      *
      * @throws IllegalArgumentException if required configuration is missing or invalid
      *
-     * @see #Client(String)
+     * @see #JTPClient(String)
      */
-    public Client(){ this(null); }
+    public JTPClient(){ this(null); }
 
     /**
      * Constructs a new {@code Client} with configuration from the specified file.
@@ -129,7 +129,7 @@ public class Client {
      * @param configFile the path to the configuration file (maybe null)
      * @throws IllegalArgumentException if required configuration is missing or invalid
      */
-    public Client(String configFile) {
+    public JTPClient(String configFile) {
         loadConfig(configFile);
 
         start();
@@ -219,8 +219,11 @@ public class Client {
         if (this.port < 0 || this.port > 65536)
             throw new IllegalArgumentException("PORT must be between 0 and 65536 and set via " + ENV_PORT + " or properties file");
 
-        if (this.truststorePath == null || this.truststorePassword == null)
-            throw new IllegalArgumentException("Truststore path/password must be set via " + ENV_TRUSTSTORE_PATH + " : " + ENV_TRUSTSTORE_PASSWORD + " or properties file");
+        if (this.truststorePath == null || this.truststorePath.trim().isEmpty())
+            logger.warn("Truststore path not set");
+
+        if (this.truststorePath != null && this.truststorePassword == null)
+            throw new IllegalArgumentException("Truststore password must be set via " + ENV_TRUSTSTORE_PASSWORD + " or properties file");
     }
 
     /**
@@ -453,7 +456,7 @@ public class Client {
     }
 
     public static void main(String[] args) {
-        Client client = new Client("Client/myConfig.properties");
+        JTPClient client = new JTPClient("Client/myConfig.properties");
 
         client.sendCommand(new AuthCommand("test"));
 

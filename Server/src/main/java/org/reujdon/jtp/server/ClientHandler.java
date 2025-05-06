@@ -27,7 +27,7 @@ import java.util.Map;
  *     <li>Cleaning up resources when the client disconnects</li>
  * </ul>
  *
- * Instances of this class are typically managed by the {@link Server} and
+ * Instances of this class are typically managed by the {@link JTPServer} and
  * executed on separate threads to allow concurrent client handling.
  *
  * @see Runnable
@@ -36,7 +36,7 @@ class ClientHandler implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(ClientHandler.class);
 
     private final SSLSocket clientSocket;
-    private final Server server;
+    private final JTPServer server;
 
     private final String clientId;
 
@@ -47,14 +47,14 @@ class ClientHandler implements Runnable {
      * Constructs a new {@code ClientHandler} with the specified SSL socket and server.
      *
      * @param socket the {@link SSLSocket} representing the client's connection
-     * @param server the {@link Server} instance that this client is connecting to
+     * @param server the {@link JTPServer} instance that this client is connecting to
      * @throws IllegalArgumentException if:
      * <ul>
      *     <li>the socket is {@code null} or closed</li>
      *     <li>the server is {@code null} or not running</li>
      * </ul>
      */
-    public ClientHandler(SSLSocket socket, Server server) {
+    public ClientHandler(SSLSocket socket, JTPServer server) {
         if (socket == null || socket.isClosed())
             throw new IllegalArgumentException("Socket is closed or null");
 

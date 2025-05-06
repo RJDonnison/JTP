@@ -11,28 +11,28 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 //TODO: fix
-class ServerTest {
-    private Server server;
+class JTPServerTest {
+    private JTPServer server;
     private CommandHandler handler;
 
     @BeforeEach
     void setup() {
-        server = new Server(0);
+        server = new JTPServer(0);
         handler = new TestCommandHandler();
     }
 
     @Test
     void testInitializationPortOutOfRangeThrows(){
-        assertThrows(IllegalArgumentException.class, () -> new Server(-1));
-        assertThrows(IllegalArgumentException.class, () -> new Server(65536));
+        assertThrows(IllegalArgumentException.class, () -> new JTPServer(-1));
+        assertThrows(IllegalArgumentException.class, () -> new JTPServer(65536));
 
-        assertDoesNotThrow(() -> new Server(0));
-        assertDoesNotThrow(() -> new Server(65535));
+        assertDoesNotThrow(() -> new JTPServer(0));
+        assertDoesNotThrow(() -> new JTPServer(65535));
     }
 
     @Test
     void testRemoveClientUnknowIDThrows() {
-        Server server = new Server();
+        JTPServer server = new JTPServer();
 
         assertThrows(IllegalArgumentException.class, () -> server.removeClient(null));
         assertThrows(IllegalArgumentException.class, () -> server.removeClient(""));

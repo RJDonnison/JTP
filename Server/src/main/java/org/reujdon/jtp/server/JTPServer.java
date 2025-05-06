@@ -76,8 +76,8 @@ import java.util.concurrent.TimeUnit;
  * @see ClientHandler
  * @see SSLServerSocket
  */
-public class Server {
-    private static final Logger logger = LoggerFactory.getLogger(Server.class);
+public class JTPServer {
+    private static final Logger logger = LoggerFactory.getLogger(JTPServer.class);
 
     // Constants for environment variable keys
     private static final String ENV_PORT = "SERVER_PORT";
@@ -107,9 +107,9 @@ public class Server {
      *
      * @throws IllegalArgumentException if required configuration is missing or invalid
      *
-     * @see #Server(String) for details on server initialization
+     * @see #JTPServer(String) for details on server initialization
      */
-    public Server() {
+    public JTPServer() {
         this(null);
     }
 
@@ -125,9 +125,9 @@ public class Server {
      * @throws IllegalArgumentException if required configuration is missing or invalid
      * @throws RuntimeException If there's an issue initializing server resources.
      *
-     * @see #Server(String) for details on server initialization
+     * @see #JTPServer(String) for details on server initialization
      */
-    public Server(String configFile) {
+    public JTPServer(String configFile) {
         loadConfig(configFile);
 
         this.running = false;
@@ -212,8 +212,11 @@ public class Server {
         if (this.port < 0 || this.port > 65536)
             throw new IllegalArgumentException("PORT must be between 0 and 65536 and set via " + ENV_PORT + " or properties file");
 
-        if (this.keystorePath == null || this.keystorePassword == null)
-            throw new IllegalArgumentException("Truststore path/password must be set via " + ENV_KEYSTORE_PATH + " : " + ENV_KEYSTORE_PASSWORD + " or properties file");
+        if (this.keystorePath == null || this.keystorePath.trim().isEmpty())
+            logger.warn("Keystore path not set");
+
+        if (this.keystorePath != null && this.keystorePassword == null)
+            throw new IllegalArgumentException("Truststore password must be set via " + ENV_KEYSTORE_PASSWORD + " or properties file");
     }
 
     /**
@@ -495,7 +498,7 @@ public class Server {
     }
 
     public static void main(String[] args) {
-        Server server = new Server();
+        JTPServer server = new JTPServer();
         server.start();
     }
 }

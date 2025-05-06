@@ -55,7 +55,7 @@ public class PropertiesUtil {
             properties.load(fis);
             return Integer.valueOf(properties.getProperty(property));
         } catch (IOException e) {
-            logger.error("Error loading properties file: {}", filename);
+            logger.warn("Unable to load properties file: {}", filename);
         } catch (NumberFormatException e) {
             logger.error("Error parsing property: {}", property);
         }
