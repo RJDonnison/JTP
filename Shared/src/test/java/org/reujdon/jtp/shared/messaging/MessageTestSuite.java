@@ -9,7 +9,6 @@ import org.junit.platform.suite.api.Suite;
         ErrorTest.class,
         RequestTest.class,
         ResponseTest.class,
-        ParseTest.class,
 })
 public class MessageTestSuite {
     // This class serves as a test suite container

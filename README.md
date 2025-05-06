@@ -100,7 +100,6 @@ This approach allows you to build your own domain-specific server logic while st
 
 ---
 
-[//]: # (todo)
 ## Roadmap
 
 - [x] Basic command communication

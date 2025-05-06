@@ -1,8 +1,7 @@
-package org.reujdon.jtp.shared.messaging;
+package org.reujdon.jtp.shared;
 
 import org.json.JSONObject;
 import org.junit.jupiter.api.Test;
-import org.reujdon.jtp.shared.Parse;
 
 import java.util.Map;
 

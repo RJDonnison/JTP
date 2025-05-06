@@ -3,6 +3,7 @@ package org.reujdon.jtp.shared;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Properties;
@@ -20,20 +21,22 @@ public class PropertiesUtil {
      * @see #getInteger(String, String)
      */
     public static String getString(String filename, String property) {
+        File file = validateFile(filename, property);
+
         Properties properties = new Properties();
 
-        // Ensure the filename has the .properties extension
-        if (!filename.endsWith(".properties"))
-            filename += ".properties";
-
-        try (FileInputStream fis = new FileInputStream(filename)) {
+        try (FileInputStream fis = new FileInputStream(file)) {
             properties.load(fis);
-            return properties.getProperty(property);
-        } catch (IOException e) {
-            logger.error("Error loading properties file: {}", filename);
-        }
+            String prop = properties.getProperty(property);
 
-        return null;
+            if (validateProperty(prop, property, file))
+                return null;
+
+            return prop.trim();
+        } catch (IOException e) {
+            logger.error("Error loading properties file: {}", file.getAbsolutePath(), e);
+            return null;
+        }
     }
 
     /**
@@ -46,20 +49,74 @@ public class PropertiesUtil {
      * @see #getString(String, String)
      */
     public static Integer getInteger(String filename, String property) {
+        File file = validateFile(filename, property);
+
         Properties properties = new Properties();
 
-        if (!filename.endsWith(".properties"))
-            filename += ".properties";
-
-        try (FileInputStream fis = new FileInputStream(filename)) {
+        try (FileInputStream fis = new FileInputStream(file)) {
             properties.load(fis);
-            return Integer.valueOf(properties.getProperty(property));
+            String prop = properties.getProperty(property);
+
+            if (validateProperty(prop, property, file))
+                return null;
+
+            return Integer.valueOf(prop.trim());
         } catch (IOException e) {
-            logger.warn("Unable to load properties file: {}", filename);
+            logger.warn("Unable to load properties file: {}", file.getAbsolutePath(), e);
         } catch (NumberFormatException e) {
             logger.error("Error parsing property: {}", property);
         }
 
         return null;
+    }
+
+    /**
+     * Gets the base directory for resolving relative paths.
+     * Defaults to the current working directory.
+     */
+    private static String getBaseDirectory() {
+        return System.getProperty("user.dir");
+    }
+
+    /**
+     * Validates and resolves a file path.
+     * <p>
+     * If the provided filename is not an absolute path, it is resolved relative to the base directory.
+     * Logs a warning if either the filename or property is null.
+     *
+     * @param filename The filename to validate.
+     * @param property The property name associated with the file (used for logging).
+     * @return A resolved {@link File} object, or {@code null} if the input is invalid.
+     */
+    private static File validateFile(String filename, String property) {
+        if (filename == null || property == null) {
+            logger.warn("Null filename or property parameter");
+            return null;
+        }
+
+        File file = new File(filename);
+        if (!file.isAbsolute())
+            return new File(getBaseDirectory(), filename);
+
+        return file;
+    }
+
+    /**
+     * Validates that a property value is not null or empty.
+     * <p>
+     * Logs debug information if the property is missing or empty.
+     *
+     * @param prop     The value of the property to validate.
+     * @param property The name of the property (used for logging).
+     * @param file     The file the property was expected to be found in (used for logging).
+     * @return {@code true} if the property is valid (non-null and non-empty), {@code false} otherwise.
+     */
+    public static boolean validateProperty(String prop, String property, File file) {
+        if (prop == null || prop.trim().isEmpty()) {
+            logger.debug("Property '{}' not found or empty in file: {}", property, file.getAbsoluteFile());
+            return true;
+        }
+
+        return false;
     }
 }
