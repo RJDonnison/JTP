@@ -19,33 +19,75 @@ import java.util.concurrent.TimeUnit;
 /**
  * A secure SSL/TLS server implementation that handles multiple client connections concurrently.
  *
- * <p>The server provides the following features:</p>
+ * <p>
+ * Configuration can be provided through either:
  * <ul>
- *   <li>Secure communication using SSL/TLS protocol</li>
- *   <li>Multithreaded client handling using a thread pool</li>
- *   <li>Custom command registration and processing</li>
+ *   <li>Environment variables (highest priority)</li>
+ *   <li>Properties file (fallback)</li>
  * </ul>
+ *
+ * <table border="1">
+ *   <caption>Configuration Options</caption>
+ *   <thead>
+ *     <tr>
+ *       <th>Description</th>
+ *       <th>Environment Variable</th>
+ *       <th>Properties Key</th>
+ *       <th>Required</th>
+ *       <th>Default</th>
+ *     </tr>
+ *   </thead>
+ *   <tbody>
+ *     <tr>
+ *       <td>Server port</td>
+ *       <td>{@code SERVER_PORT}</td>
+ *       <td>{@code server.port}</td>
+ *       <td>Yes</td>
+ *       <td>None</td>
+ *     </tr>
+ *     <tr>
+ *       <td>Path to SSL keystore file</td>
+ *       <td>{@code SERVER_KEYSTORE_PATH}</td>
+ *       <td>{@code sever.path}</td>
+ *       <td>Yes</td>
+ *       <td>None</td>
+ *     </tr>
+ *     <tr>
+ *       <td>Password for the keystore</td>
+ *       <td>{@code SERVER_KEYSTORE_PASSWORD}</td>
+ *       <td>{@code server.password}</td>
+ *       <td>Yes</td>
+ *       <td>None</td>
+ *     </tr>
+ *   </tbody>
+ * </table>
+ * <p>
+ * <b>Note:</b> Port values must be between 0-65535.
  *
  * <p>Example usage:</p>
  * <pre>
  * {@code
- * Server server = new Server(8080);
+ * Server server = new Server();
  * server.addCommand("test", params -> new JSONObject().put("status", "success"));
  * server.start();
  * }
  * </pre>
  *
  * @see ClientHandler
- * @see SSLContext
  * @see SSLServerSocket
  */
 public class Server {
     private static final Logger logger = LoggerFactory.getLogger(Server.class);
 
-    private final String KEYSTORE_PATH;
-    private final String KEYSTORE_PASSWORD;
+    // Constants for environment variable keys
+    private static final String ENV_PORT = "SERVER_PORT";
+    private static final String ENV_KEYSTORE_PATH = "SERVER_KEYSTORE_PATH";
+    private static final String ENV_KEYSTORE_PASSWORD = "SERVER_KEYSTORE_PASSWORD";
+    private static final String DEFAULT_CONFIG_FILE = "server.properties";
 
-    private final int PORT;
+    private int port = -1;
+    private String keystorePath;
+    private String keystorePassword;
 
     private SSLServerSocket serverSocket;
 
@@ -54,38 +96,39 @@ public class Server {
 
     private boolean running;
 
-//    TODO: rework configs
     /**
-     * Constructs a Server instance with the default port 8080.
+     * Constructs a new {@code Server} with default config file.
+     * <p>
+     * Configuration will be loaded from:
+     * <ol>
+     *   <li>Environment variables</li>
+     *   <li>Default config file ({@code server.properties})</li>
+     * </ol>
      *
-     * @param configFile the path to the configFile
+     * @throws IllegalArgumentException if required configuration is missing or invalid
      *
-     * @see #Server(int, String) for details on server initialization
+     * @see #Server(String) for details on server initialization
      */
-    public Server(String configFile) {
-        this(8080, configFile);
+    public Server() {
+        this(null);
     }
 
     /**
-     * Constructs a Server instance with the specified port.
-     * Initializes the command registry and a cached thread pool for handling client connections.
+     * Constructs a new {@code Server} with configuration from the specified file.
+     * <p>
+     * Configuration will be loaded from:
+     * <ol>
+     *   <li>Environment variables</li>
+     *   <li>Default config file ({@code server.properties})</li>
+     * </ol>
      *
-     * @param port The port number on which the server will listen. Must be between 0 and 65535.
-     * @param configFile the path to the configFile
-     * @throws IllegalArgumentException If the port number is invalid (negative or greater than 65535)
+     * @throws IllegalArgumentException if required configuration is missing or invalid
      * @throws RuntimeException If there's an issue initializing server resources.
+     *
+     * @see #Server(String) for details on server initialization
      */
-    public Server(int port, String configFile) {
-        if (port < 0 || port > 65535)
-            throw new IllegalArgumentException(String.format("Invalid port number: %d. Port must be between 0 and 65535", port));
-
-        this.PORT = port;
-
-        if (configFile == null || !configFile.trim().endsWith(".properties"))
-            throw new IllegalArgumentException(String.format("Invalid config file: %s", configFile));
-
-        KEYSTORE_PATH = PropertiesUtil.getString(configFile, "server.path");
-        KEYSTORE_PASSWORD = PropertiesUtil.getString(configFile, "server.password");
+    public Server(String configFile) {
+        loadConfig(configFile);
 
         this.running = false;
 
@@ -94,6 +137,83 @@ public class Server {
         } catch (Exception e) {
             throw new RuntimeException("Failed to initialize server components", e);
         }
+    }
+
+    /**
+     * Loads configuration from environment variables and properties file.
+     *
+     * @param configFile the path to the properties file (may be null)
+     */
+    private void loadConfig(String configFile){
+        loadFromEnvVars();
+
+        if (hasMissingConfig()) {
+            if (configFile == null)
+                configFile = DEFAULT_CONFIG_FILE;
+
+            loadFromPropertiesFile(configFile);
+        }
+
+        validateConfig();
+    }
+
+    /**
+     * Checks if any required configuration is missing.
+     */
+    private boolean hasMissingConfig() {
+        return port == -1 || keystorePath == null || keystorePassword == null;
+    }
+
+    /**
+     * Loads configuration from environment variables.
+     */
+    private void loadFromEnvVars() {
+        String envPort = System.getenv(ENV_PORT);
+        if (envPort != null) {
+            try {
+                this.port = Integer.parseInt(envPort);
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Invalid PORT in env vars", e);
+            }
+        }
+
+        String envKeystorePath = System.getenv(ENV_KEYSTORE_PATH);
+        if (envKeystorePath != null)
+            this.keystorePath = envKeystorePath;
+
+        String envKeystorePassword = System.getenv(ENV_KEYSTORE_PASSWORD);
+        if (envKeystorePassword != null)
+            this.keystorePassword = envKeystorePassword;
+    }
+
+    /**
+     * Loads configuration from properties file.
+     *
+     * @param configFile the path to the properties file
+     * @throws IllegalArgumentException if the file is invalid
+     */
+    private void loadFromPropertiesFile(String configFile) {
+        if (this.port == -1)
+            this.port = PropertiesUtil.getInteger(configFile, "server.port");
+
+        if (this.keystorePath == null)
+            this.keystorePath = PropertiesUtil.getString(configFile, "server.path");
+
+        if (this.keystorePassword == null)
+            this.keystorePassword = PropertiesUtil.getString(configFile, "server.password");
+    }
+
+    /**
+     * Validates the loaded configuration.
+     *
+     * @throws IllegalArgumentException if any configuration is invalid
+     */
+    private void validateConfig() {
+        if (this.port < 0 || this.port > 65536)
+            throw new IllegalArgumentException("PORT must be between 0 and 65536 and set via " + ENV_PORT + " or properties file");
+
+        if (this.keystorePath == null || this.keystorePassword == null)
+            throw new IllegalArgumentException("Truststore path/password must be set via " + ENV_KEYSTORE_PATH + " : " + ENV_KEYSTORE_PASSWORD + " or properties file");
     }
 
     /**
@@ -111,7 +231,7 @@ public class Server {
         try {
             SSLContext sslContext = createSSLContext();
             SSLServerSocketFactory ssf = sslContext.getServerSocketFactory();
-            serverSocket = (SSLServerSocket) ssf.createServerSocket(this.PORT);
+            serverSocket = (SSLServerSocket) ssf.createServerSocket(this.port);
 
             // Register shutdown hook for graceful termination
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -119,7 +239,7 @@ public class Server {
                 close();
             }));
 
-            logger.info("Server started on port {}", this.PORT);
+            logger.info("Server started on port {}", this.port);
 
             running = true;
             handleClients();
@@ -139,7 +259,7 @@ public class Server {
      */
     private SSLContext createSSLContext() {
         // Validate inputs
-        if (KEYSTORE_PATH == null || KEYSTORE_PATH.trim().isEmpty()) {
+        if (keystorePath == null || keystorePath.trim().isEmpty()) {
             try {
                 // Create a basic SSL context without client authentication
                 SSLContext sslContext = SSLContext.getInstance("TLS");
@@ -151,18 +271,18 @@ public class Server {
             }
         }
 
-        File keystoreFile = new File(KEYSTORE_PATH);
+        File keystoreFile = new File(keystorePath);
         if (!keystoreFile.exists())
-            throw new IllegalArgumentException("Keystore file not found at: " + KEYSTORE_PATH);
+            throw new IllegalArgumentException("Keystore file not found at: " + keystorePath);
 
-        try (FileInputStream fis = new FileInputStream(KEYSTORE_PATH)) {
+        try (FileInputStream fis = new FileInputStream(keystorePath)) {
             // Load keystore
             KeyStore keyStore = KeyStore.getInstance("JKS");
-            keyStore.load(fis, KEYSTORE_PASSWORD.toCharArray());
+            keyStore.load(fis, keystorePassword.toCharArray());
 
             // Initialize key manager factory
             KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance("SunX509");
-            keyManagerFactory.init(keyStore, KEYSTORE_PASSWORD.toCharArray());
+            keyManagerFactory.init(keyStore, keystorePassword.toCharArray());
 
             // Initialize trust manager factory
             TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance("SunX509");
@@ -375,7 +495,7 @@ public class Server {
     }
 
     public static void main(String[] args) {
-        Server server = new Server("Server/myConfig.properties");
+        Server server = new Server();
         server.start();
     }
 }
