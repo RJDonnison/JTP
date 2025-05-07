@@ -94,9 +94,9 @@ public abstract class Request extends Message {
 
     public void setToken(String token) {
         if (token != null)
-            setParam("token", token.trim());
+            addParam("token", token.trim());
         else
-            setParam("token", null);
+            addParam("token", null);
     }
 
     public long getTimeout() {

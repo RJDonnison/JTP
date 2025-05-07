@@ -96,6 +96,7 @@ public class JTPServer {
 
     private boolean running;
 
+//    TODO: add authentication setting
     /**
      * Constructs a new {@code Server} with default config file.
      * <p>

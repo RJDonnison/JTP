@@ -73,15 +73,12 @@ abstract class Message {
      * Adds a parameter to this message with the specified key and value.
      *
      * @param key the parameter key (cannot be empty or contain only whitespace)
-     * @param value the parameter value to associate with the key (can be null)
+     * @param value the parameter value to associate with the key
      * @throws IllegalArgumentException if the key is invalid
      */
     public void addParam(String key, Object value) {
         if (key.trim().isEmpty())
-            throw new IllegalArgumentException("Key cannot be empty.");
-
-        if (params.containsKey(key))
-            throw new IllegalArgumentException("Duplicate key: " + key);
+            throw new IllegalArgumentException("Key cannot be empty or null.");
 
         params.put(key, value);
     }
@@ -115,24 +112,6 @@ abstract class Message {
     }
 
     /**
-     * Updates the value of an existing parameter in this message.
-     *
-     * <p>This method differs from {@link #addParam} in that it requires the key to already exist
-     * in the parameters map, and will not add new keys.</p>
-     *
-     * @param key the key of the parameter to update
-     * @param value the new value to associate with the key
-     * @throws IllegalArgumentException if the key does not exist in the parameters map
-     * @see #addParam(String, Object)
-     */
-    public void setParam(String key, Object value) {
-        if (!params.containsKey(key))
-            throw new IllegalArgumentException("Map is missing key: " + key);
-
-        params.put(key, value);
-    }
-
-    /**
      * Removes the parameter with the specified key from this message.
      *
      * <p>If the key does not exist in the parameters map, the method completes silently
@@ -140,7 +119,6 @@ abstract class Message {
      *
      * @param key the key of the parameter to remove
      * @see #addParam(String, Object)
-     * @see #setParam(String, Object)
      */
     protected void removeParam(String key) {
         params.remove(key);

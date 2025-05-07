@@ -1,7 +1,6 @@
 package org.reujdon.jtp.server;
 
 import jdk.jfr.Description;
-import org.reujdon.jtp.server.handlers.AuthCommandHandler;
 import org.reujdon.jtp.server.handlers.HelpCommandHandler;
 
 import java.util.HashMap;
@@ -20,7 +19,6 @@ public class CommandRegistry {
 //    Base command initialization
     static {
         handlers.put("Help", new HelpCommandHandler());
-        handlers.put("AUTH", new AuthCommandHandler());
         validateDescriptions();
     }
 

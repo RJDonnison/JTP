@@ -2,9 +2,10 @@ package org.reujdon.jtp.client;
 
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.reujdon.jtp.client.commands.AuthCommand;
+import org.reujdon.jtp.client.commands.HelpCommand;
 import org.reujdon.jtp.shared.Parse;
 import org.reujdon.jtp.shared.PropertiesUtil;
+import org.reujdon.jtp.shared.messaging.Auth;
 import org.reujdon.jtp.shared.messaging.MessageType;
 import org.reujdon.jtp.shared.messaging.Request;
 import org.slf4j.Logger;
@@ -21,7 +22,6 @@ import java.security.KeyStore;
 import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 
 /**
  * A secure client that connects to a server over SSL/TLS.
@@ -94,6 +94,9 @@ public class JTPClient {
 
     private SSLSocket sslSocket;
 
+    //    TODO: look at secure storage
+    private String sessionToken;
+
     private BufferedReader in;
     private PrintWriter out;
 
@@ -101,6 +104,8 @@ public class JTPClient {
     private Thread listeningThread;
 
     private final HashMap<String, Request> pendingResponses = new HashMap<>();
+
+    private Request cachedRequest = null;
 
     /**
      * Constructs a new {@code Client} with default config file.
@@ -259,7 +264,7 @@ public class JTPClient {
             throw new RuntimeException("Client initialization failed", e);
         }
 
-        listeningThread = new Thread(this::handlePendingResponses);
+        listeningThread = new Thread(this::handleResponses);
         listeningThread.start();
     }
 
@@ -301,33 +306,18 @@ public class JTPClient {
         }
     }
 
+//    TODO: abstract start here
     /**
      * Listens for and processes pending responses from the server.
      */
-    private void handlePendingResponses() {
+    private void handleResponses() {
         String line;
 
         try {
             while (running && (line = in.readLine()) != null) {
                 JSONObject response = new JSONObject(line);
-                String id = response.optString("id", null);
 
-                if (Objects.equals(id, "*"))
-                {
-                    Map<String, Object> params = Parse.Params(response);
-                    logger.error("Server error with unknown id: {}", params.get("message").toString());
-                }
-
-                if (id != null && pendingResponses.containsKey(id)) {
-                    Request request = pendingResponses.get(id);
-                    if (request == null)
-                        throw new RuntimeException("Request missing: " + id);
-
-                    Task.of(() -> handleResponse(response, request)).run();
-
-                    pendingResponses.remove(id);
-                } else
-                    logger.warn("Unmatched response: {}", response);
+                processResponse(response);
             }
         } catch (IOException e) {
             if (running)
@@ -341,19 +331,99 @@ public class JTPClient {
         }
     }
 
+    private void processResponse(JSONObject response) {
+        try {
+            String id = response.optString("id", null);
+            String typeStr = response.optString("type", null);
+
+            if (typeStr == null) {
+                logger.warn("Missing 'type' in response: {}", response);
+                return;
+            }
+
+            MessageType type;
+            try {
+                type = MessageType.valueOf(typeStr);
+            } catch (IllegalArgumentException e) {
+                logger.warn("Unknown MessageType '{}': {}", typeStr, response);
+                return;
+            }
+
+            if ("*".equals(id)){
+                if (type == MessageType.ERROR)
+                    Task.of(() -> handleGlobalError(response)).run();
+                else if (type == MessageType.AUTH)
+                    Task.of(() -> handleAuthResponse(response)).run();
+
+                return;
+            }
+
+            if (type == MessageType.AUTH){
+                Task.of(() -> handleAuthRequest(id, response)).run();
+                return;
+            }
+
+            Task.of(() -> handleRegularResponse(id, response)).run();
+        } catch (JSONException e) {
+            logger.error("Failed to parse response JSON: {}", e.getMessage());
+        }
+    }
+
+    private void handleGlobalError(JSONObject response) {
+        Map<String, Object> params = Parse.Params(response);
+        logger.error("Server error: {}", params.getOrDefault("message", "No message"));
+    }
+
+    private void handleAuthRequest(String id, JSONObject response) {
+        Request request = pendingResponses.remove(id);
+
+        if (request == null)
+            logger.warn("AUTH response without matching request: {}", response);
+
+        logger.info("Authenticating...");
+
+        cachedRequest = request;
+
+//        TODO: put in key
+        out.println(new Auth("*", "test").toJSON());
+    }
+
+//    TODO: handle multiple AUTH request and response at once
+//    TODO: handle failed AUTH
+    private void handleAuthResponse(JSONObject response) {
+        String token = Parse.Params(response).getOrDefault("key", null).toString();
+
+        if (token == null) {
+            logger.warn("Auth response without token: {}", response);
+            return;
+        }
+
+        sessionToken = token;
+
+        sendCommand(cachedRequest);
+        cachedRequest = null;
+
+        logger.info("Auth successful");
+    }
+
     /**
      * Handles the response from the server and passes to suitable {@link Request} function.
      *
      * @param response the {@link JSONObject} containing the server's response data
-     * @param request  the {@link Request} associated with the response
      * @throws IllegalArgumentException if {@code response} or {@code request} is null
      */
-    private void handleResponse(JSONObject response, Request request){
+    private void handleRegularResponse(String id, JSONObject response){
+        if (id == null || !pendingResponses.containsKey(id)) {
+            logger.warn("Unmatched response: {}", response);
+            return;
+        }
+
+        Request request = pendingResponses.remove(id);
+        if (request == null)
+            throw new RuntimeException("Request was null for ID: " + id);
+
         if (response == null)
             throw new IllegalArgumentException("Response cannot be null");
-
-        if (request == null)
-            throw new IllegalArgumentException("Request cannot be null");
 
         MessageType type = response.getEnum(MessageType.class, "type");
 
@@ -371,6 +441,8 @@ public class JTPClient {
         }
     }
 
+//    TODO: abstract end here
+
     /**
      * Sends a command to the server and stores the associated request for later response handling.
      *
@@ -384,6 +456,8 @@ public class JTPClient {
         String id = request.getId();
         if (id == null || id.trim().isEmpty())
             throw new IllegalArgumentException("Request id cannot be null or empty");
+
+        request.addParam("token", sessionToken);
 
         JSONObject json = request.toJSON();
 
@@ -458,7 +532,7 @@ public class JTPClient {
     public static void main(String[] args) {
         JTPClient client = new JTPClient("Client/myConfig.properties");
 
-        client.sendCommand(new AuthCommand("test"));
+        client.sendCommand(new HelpCommand());
 
         Async.waitFor(5000);
 
