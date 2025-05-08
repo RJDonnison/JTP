@@ -143,7 +143,6 @@ class ClientHandler implements Runnable {
         // Verify token exists
         Object token = params.getOrDefault("token", null);
         if (token == null || !token.equals(sessionToken)) {
-            System.out.println("session token is " + sessionToken + " and token is " + token);
             sendAuth(commandId);
             return;
         }
