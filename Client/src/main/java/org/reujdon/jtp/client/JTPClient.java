@@ -322,9 +322,8 @@ public class JTPClient implements Runnable, AutoCloseable {
                 logger.info("Listening thread closed.");
         } catch (JsonException e) {
             logger.error("Error parsing response: {}", e.getMessage());
-        }
-        catch (Exception e) {
-            logger.error("Unexpected error while handling response: {}", e.getMessage());
+        } catch (Exception e) {
+            logger.error("Unexpected error while handling response: {}", e.getClass().getSimpleName());
         }
     }
 

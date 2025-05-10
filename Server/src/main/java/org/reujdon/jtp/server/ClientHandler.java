@@ -8,7 +8,6 @@ import org.reujdon.jtp.shared.messaging.messages.Request;
 import org.reujdon.jtp.shared.messaging.messages.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reujdon.async.Task;
 
 import javax.net.ssl.SSLSocket;
 import java.io.BufferedReader;
@@ -80,8 +79,7 @@ class ClientHandler implements Runnable {
             while ((message = in.readLine()) != null) {
                 Message deserilaizedMessage = MessageFactory.deserialize(message);
 
-//                TODO: remove
-                Task.of(() -> handleMessage(deserilaizedMessage)).run();
+                Thread.startVirtualThread(() -> handleMessage(deserilaizedMessage));
             }
         }
         catch (IOException e){

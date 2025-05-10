@@ -2,10 +2,8 @@ package org.reujdon.jtp.client;
 
 import org.reujdon.jtp.client.commands.Command;
 import org.reujdon.jtp.shared.messaging.Message;
-import org.reujdon.jtp.shared.messaging.messages.Request;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reujdon.async.Task;
 
 import java.util.HashMap;
 
@@ -54,25 +52,20 @@ class ResponseHandler {
         }
     }
 
-    /**
-     * Handles the timeout for a request if a response is not received within the specified timeout period.
-     *
-     * @param command the {@link Request} object that timed out
-     * @param id the unique identifier of the request
-     * @throws IllegalArgumentException if request or id is null or empty
-     */
-    private void handleTimeout(Command command, String id) {
-        if (pendingResponses.containsKey(id))
-            command.onTimeout();
-
-        pendingResponses.remove(id);
-    }
-
     public void addPendingRequest(String id, Command command) {
         pendingResponses.put(id, command);
 
-        Task<Void> timeout = Task.of(() -> handleTimeout(command, id));
-        timeout.delay(command.getTimeout());
+        Thread.startVirtualThread(() -> {
+            try {
+                Thread.sleep(command.getTimeout());
+                if (pendingResponses.containsKey(id))
+                    command.onTimeout();
+
+                pendingResponses.remove(id);
+            } catch (InterruptedException ignored) {
+                // Thread was cancelled or interrupted before timeout
+            }
+        });
     }
 
     public void removePendingRequest(String id) {
