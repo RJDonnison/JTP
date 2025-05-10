@@ -76,8 +76,7 @@ import java.util.concurrent.TimeUnit;
  * @see ClientHandler
  * @see SSLServerSocket
  */
-//TODO: look at runnable
-public class JTPServer implements AutoCloseable {
+public class JTPServer implements Runnable, AutoCloseable {
     private static final Logger logger = LoggerFactory.getLogger(JTPServer.class);
 
     // Constants for environment variable keys
@@ -95,7 +94,7 @@ public class JTPServer implements AutoCloseable {
     private final ExecutorService clientThreadPool;
     private final ConcurrentHashMap<String, ClientHandler> activeClients = new ConcurrentHashMap<>();
 
-    private boolean running;
+    private volatile boolean running;
 
 //    TODO: add authentication setting
     /**
@@ -229,7 +228,8 @@ public class JTPServer implements AutoCloseable {
      *
      * @see #close()
      */
-    public void start() {
+    @Override
+    public void run() {
         if (running)
             throw new IllegalStateException("Server is already running");
 
@@ -237,12 +237,6 @@ public class JTPServer implements AutoCloseable {
             SSLContext sslContext = createSSLContext();
             SSLServerSocketFactory ssf = sslContext.getServerSocketFactory();
             serverSocket = (SSLServerSocket) ssf.createServerSocket(this.port);
-
-            // Register shutdown hook for graceful termination
-            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                logger.info("Shutdown triggered, closing server...");
-                close();
-            }));
 
             logger.info("Server started on port {}", this.port);
 
@@ -502,7 +496,7 @@ public class JTPServer implements AutoCloseable {
 
     public static void main(String[] args) {
         try (JTPServer server = new JTPServer()) {
-            server.start();
+            server.run();
         }
     }
 }

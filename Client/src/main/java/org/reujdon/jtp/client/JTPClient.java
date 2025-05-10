@@ -76,8 +76,7 @@ import java.util.concurrent.TimeUnit;
  * <p>
  * <b>Note:</b> Port values must be between 0-65535.
  */
-//TODO: look at runnable
-public class JTPClient implements AutoCloseable {
+public class JTPClient implements Runnable, AutoCloseable {
     private static final Logger logger = LoggerFactory.getLogger(JTPClient.class);
 
     // Constants for environment variable keys
@@ -133,7 +132,7 @@ public class JTPClient implements AutoCloseable {
     public JTPClient(String configFile) {
         loadConfig(configFile);
 
-        start();
+        run();
     }
 
     /**
@@ -240,7 +239,8 @@ public class JTPClient implements AutoCloseable {
      *     <li>inability to create the SSL context or connect to the server</li>
      * </ul>
      */
-    private void start() {
+    @Override
+    public void run() {
         try{
             SSLContext sslContext = createSSLContext();
             SSLSocketFactory sslSocketFactory = sslContext.getSocketFactory();
@@ -352,12 +352,44 @@ public class JTPClient implements AutoCloseable {
      * Closes the client connection and associated resources.
      */
     @Override
-//    TODO: abstract
     public void close() {
         logger.info("Closing connection...");
 
         running = false;
 
+        shutdownResponseExecutor();
+        stopListeningThread();
+        closeStreamsAndSocket();
+
+        logger.info("Client resources closed successfully.");
+    }
+
+    private void shutdownResponseExecutor() {
+        responseExecutor.shutdown();
+        try {
+            if (!responseExecutor.awaitTermination(1, TimeUnit.SECONDS)) {
+                logger.warn("Response executor did not terminate in time; forcing shutdown.");
+                responseExecutor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.error("Interrupted during response executor shutdown.");
+        }
+    }
+
+    private void stopListeningThread() {
+        if (listeningThread != null && listeningThread.isAlive()) {
+            listeningThread.interrupt();
+            try {
+                listeningThread.join(1000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                logger.error("Interrupted while waiting for listening thread to stop.");
+            }
+        }
+    }
+
+    private void closeStreamsAndSocket() {
         try {
             if (out != null) {
                 out.close();
@@ -374,28 +406,6 @@ public class JTPClient implements AutoCloseable {
         } catch (IOException e) {
             logger.error("Error while closing the client SSL socket or streams: {}", e.getMessage());
         }
-
-        responseExecutor.shutdown();
-        try {
-            if (!responseExecutor.awaitTermination(1, TimeUnit.SECONDS)) {
-                logger.warn("Response executor did not terminate in time; forcing shutdown.");
-                responseExecutor.shutdownNow();
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            logger.error("Interrupted during response executor shutdown.");
-        }
-
-        if (listeningThread != null && listeningThread.isAlive()) {
-            try {
-                listeningThread.join(1000);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                logger.error("Interrupted while waiting for listening thread to stop.");
-            }
-        }
-
-        logger.info("Client resources closed successfully.");
     }
 
     public static void main(String[] args) {
