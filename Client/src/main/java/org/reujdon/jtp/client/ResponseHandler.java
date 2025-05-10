@@ -1,7 +1,6 @@
 package org.reujdon.jtp.client;
 
 import org.reujdon.jtp.shared.json.JsonAdapter;
-import org.reujdon.jtp.shared.messaging.Auth;
 import org.reujdon.jtp.shared.messaging.MessageType;
 import org.reujdon.jtp.shared.messaging.Request;
 import org.slf4j.Logger;
@@ -9,7 +8,6 @@ import org.slf4j.LoggerFactory;
 import reujdon.async.Async;
 import reujdon.async.Task;
 
-import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -18,14 +16,8 @@ class ResponseHandler {
 
     private final HashMap<String, Request> pendingResponses;
 
-    private final PrintWriter out;
-
-    //    TODO: look at secure storage
-    private String sessionToken;
-
-    public ResponseHandler(PrintWriter out) {
+    public ResponseHandler() {
         this.pendingResponses = new HashMap<>();
-        this.out = out;
     }
 
     public void processResponse(JsonAdapter response) {
@@ -37,66 +29,7 @@ class ResponseHandler {
             return;
         }
 
-        MessageType type;
-        try {
-            type = MessageType.valueOf(typeStr);
-        } catch (IllegalArgumentException e) {
-            logger.warn("Unknown MessageType '{}': {}", typeStr, response);
-            return;
-        }
-
-        if ("*".equals(id)){
-            if (type == MessageType.ERROR)
-                Task.of(() -> handleGlobalError(response)).run();
-            else if (type == MessageType.AUTH)
-                Task.of(() -> handleAuthResponse(response)).run();
-
-            return;
-        }
-
-        if (type == MessageType.AUTH){
-            Task.of(() -> handleAuthRequest(id, response)).run();
-            return;
-        }
-
         Task.of(() -> handleRegularResponse(id, response)).run();
-    }
-
-    private void handleGlobalError(JsonAdapter response) {
-        Map<String, Object> params = response.getMap("params");
-        logger.error("Server error: {}", params.getOrDefault("message", "No message"));
-    }
-
-    private void handleAuthRequest(String id, JsonAdapter response) {
-        Request request = pendingResponses.remove(id);
-
-        if (request == null)
-            logger.warn("AUTH response without matching request: {}", response);
-
-        logger.info("Authenticating...");
-
-//        TODO: put in key
-        out.println(new Auth("*", "test").toJSON());
-    }
-
-//    TODO: handle multiple AUTH request and response at once
-//    TODO: handle send command when AUTH
-//    TODO: handle failed AUTH
-    private void handleAuthResponse(JsonAdapter response) {
-        String token = response.getMap("params").getOrDefault("key", null).toString();
-
-        if (token == null) {
-            logger.warn("Auth response without token: {}", response);
-            return;
-        }
-
-        sessionToken = token;
-
-//        TODO: resend last command
-//        sendCommand(cachedRequest);
-//        cachedRequest = null;
-
-        logger.info("Auth successful");
     }
 
     /**
@@ -165,9 +98,5 @@ class ResponseHandler {
 
     public void removePendingRequest(String id) {
         pendingResponses.remove(id);
-    }
-
-    public String getSessionToken() {
-        return sessionToken;
     }
 }

@@ -1,11 +1,8 @@
 package org.reujdon.jtp.server;
 
-import org.reujdon.jtp.shared.Permission;
-import org.reujdon.jtp.shared.TokenUtil;
 import org.reujdon.jtp.shared.json.GsonAdapter;
 import org.reujdon.jtp.shared.json.JsonAdapter;
 import org.reujdon.jtp.shared.json.JsonException;
-import org.reujdon.jtp.shared.messaging.Auth;
 import org.reujdon.jtp.shared.messaging.Error;
 import org.reujdon.jtp.shared.messaging.MessageType;
 import org.reujdon.jtp.shared.messaging.Response;
@@ -18,7 +15,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -45,19 +41,8 @@ class ClientHandler implements Runnable {
 
     private final String clientId;
 
-    private Permission permission; //TODO: use permission
-//    TODO: look at secure storage
-    private final String sessionToken;
-
     private BufferedReader in;
     private PrintWriter out;
-
-//    TODO: move to file
-    private static final Map<String, Permission> KEYS = new HashMap<>();
-
-    static {
-        KEYS.put("test", Permission.NONE);
-    }
 
     /**
      * Constructs a new {@code ClientHandler} with the specified SSL socket and server.
@@ -80,7 +65,6 @@ class ClientHandler implements Runnable {
         this.clientSocket = socket;
         this.server = server;
         this.clientId = socket.getRemoteSocketAddress().toString();
-        this.sessionToken = TokenUtil.generateSessionToken();
     }
 
     /**
@@ -134,19 +118,6 @@ class ClientHandler implements Runnable {
         // Parse parameters
         Map<String, Object> params = json.getMap("params");
 
-        // Check if Auth request
-        if (type == MessageType.AUTH && params.containsKey("key")) {
-            handleAuthResponse(params.get("key").toString());
-            return;
-        }
-
-        // Verify token exists
-        Object token = params.getOrDefault("token", null);
-        if (token == null || !token.equals(sessionToken)) {
-            sendAuth(commandId);
-            return;
-        }
-
         // Verify command exists
         if (!params.containsKey("command")) {
             sendError(commandId, "No command specified");
@@ -170,25 +141,6 @@ class ClientHandler implements Runnable {
         } catch (Exception e) {
             sendError(commandId, "Command execution failed: " + e.getMessage());
         }
-    }
-
-//    TODO: javadoc
-
-    private void sendAuth(String id) {
-        logger.info("Sending authentication request to client: {}", clientId);
-
-        out.println(new Auth(id).toJSON());
-    }
-
-    private void handleAuthResponse(String key) {
-        if (!KEYS.containsKey(key)) //TODO: send failed AUTH
-            throw new IllegalStateException("Key invalid: " + key);
-
-        permission = KEYS.get(key);
-
-        out.println(new Auth("*", sessionToken).toJSON());
-
-        logger.info("Client: {}, Successful authentication, permissions: {}", clientId, permission);
     }
 
     /**

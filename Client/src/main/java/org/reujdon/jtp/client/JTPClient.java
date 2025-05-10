@@ -245,7 +245,7 @@ public class JTPClient {
             in = new BufferedReader(new InputStreamReader(sslSocket.getInputStream()));
             out = new PrintWriter(sslSocket.getOutputStream(), true);
 
-            responseHandler = new ResponseHandler(out);
+            responseHandler = new ResponseHandler();
 
             logger.info("Connected to server at {} : {}\n", host, port);
 
@@ -336,8 +336,6 @@ public class JTPClient {
         String id = request.getId();
         if (id == null || id.trim().isEmpty())
             throw new IllegalArgumentException("Request id cannot be null or empty");
-
-        request.addParam("token", responseHandler.getSessionToken());
 
         responseHandler.addPendingRequest(id, request);
 
