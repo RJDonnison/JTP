@@ -1,6 +1,6 @@
 package org.reujdon.jtp.server;
 
-import org.reujdon.jtp.shared.messaging.Response;
+import org.reujdon.jtp.shared.messaging.messages.Response;
 
 import java.util.Map;
 

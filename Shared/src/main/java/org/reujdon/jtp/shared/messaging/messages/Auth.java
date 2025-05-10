@@ -1,4 +1,7 @@
-package org.reujdon.jtp.shared.messaging;
+package org.reujdon.jtp.shared.messaging.messages;
+
+import org.reujdon.jtp.shared.messaging.Message;
+import org.reujdon.jtp.shared.messaging.MessageType;
 
 //TODO: javadoc
 public class Auth extends Message {

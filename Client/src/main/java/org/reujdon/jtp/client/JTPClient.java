@@ -1,11 +1,12 @@
 package org.reujdon.jtp.client;
 
+import org.reujdon.jtp.client.commands.Command;
 import org.reujdon.jtp.client.commands.HelpCommand;
 import org.reujdon.jtp.shared.PropertiesUtil;
 import org.reujdon.jtp.shared.json.GsonAdapter;
 import org.reujdon.jtp.shared.json.JsonAdapter;
 import org.reujdon.jtp.shared.json.JsonException;
-import org.reujdon.jtp.shared.messaging.Request;
+import org.reujdon.jtp.shared.messaging.messages.Request;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reujdon.async.Async;
@@ -326,20 +327,20 @@ public class JTPClient {
     /**
      * Sends a command to the server and stores the associated request for later response handling.
      *
-     * @param request the {@link Request} object containing the command to be sent
+     * @param command the {@link Request} object containing the command to be sent
      * @throws IllegalArgumentException if the request is {@code null} or request id is {@code null}
      */
-    public void sendCommand(Request request) {
-        if (request == null)
-            throw new IllegalArgumentException("Request cannot be null");
+    public void sendCommand(Command command) {
+        if (command == null)
+            throw new IllegalArgumentException("Command cannot be null");
 
-        String id = request.getId();
-        if (id == null || id.trim().isEmpty())
-            throw new IllegalArgumentException("Request id cannot be null or empty");
+        String id = command.getId();
+        if (id == null || id.isBlank())
+            throw new IllegalArgumentException("Command id cannot be null or blank");
 
-        responseHandler.addPendingRequest(id, request);
+        responseHandler.addPendingRequest(id, command);
 
-        out.println(request.toJSON());
+        out.println(command.toJSON());
         out.flush();
     }
 

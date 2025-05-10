@@ -1,12 +1,10 @@
 package org.reujdon.jtp.client.commands;
 
-import org.reujdon.jtp.shared.messaging.Request;
-
 import java.util.Map;
 
-public class HelpCommand extends Request {
+public class HelpCommand extends Command {
     public HelpCommand() {
-        super("Help", 500);
+        super("Help");
     }
 
     @Override

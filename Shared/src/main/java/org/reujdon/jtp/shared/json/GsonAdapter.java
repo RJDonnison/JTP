@@ -23,15 +23,7 @@ public class GsonAdapter implements JsonAdapter {
 
     public GsonAdapter(String jsonString) throws JsonException {
         this();
-        this.jsonString = jsonString;
-
-        try {
-            this.jsonObject = gson.fromJson(jsonString, JsonObject.class);
-            if (jsonObject == null)
-                throw new JsonException("JSON string did not produce a valid JsonObject (null)");
-        } catch (Exception e) {
-            throw new JsonException("Failed to parse raw JSON into JsonObject", e);
-        }
+        setJsonString(jsonString);
     }
 
     @Override
@@ -194,7 +186,15 @@ public class GsonAdapter implements JsonAdapter {
     }
 
     @Override
-    public void setJsonString(String jsonString) {
+    public void setJsonString(String jsonString) throws JsonException {
         this.jsonString = jsonString;
+
+        try {
+            this.jsonObject = gson.fromJson(jsonString, JsonObject.class);
+            if (jsonObject == null)
+                throw new JsonException("JSON string did not produce a valid JsonObject (null)");
+        } catch (Exception e) {
+            throw new JsonException("Failed to parse raw JSON into JsonObject", e);
+        }
     }
 }

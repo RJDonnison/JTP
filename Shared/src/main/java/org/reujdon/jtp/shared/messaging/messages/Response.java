@@ -1,6 +1,8 @@
-package org.reujdon.jtp.shared.messaging;
+package org.reujdon.jtp.shared.messaging.messages;
 
 import org.reujdon.jtp.shared.json.JsonAdapter;
+import org.reujdon.jtp.shared.messaging.Message;
+import org.reujdon.jtp.shared.messaging.MessageType;
 
 import java.util.Map;
 

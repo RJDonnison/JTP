@@ -20,7 +20,7 @@ import java.util.UUID;
  *
  * @see MessageType
  */
-abstract class Message {
+public class Message {
     private String id;
     private final MessageType type;
 

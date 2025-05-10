@@ -4,7 +4,7 @@ import jdk.jfr.Description;
 import org.junit.jupiter.api.Test;
 import org.reujdon.jtp.server.CommandHandler;
 import org.reujdon.jtp.server.CommandRegistry;
-import org.reujdon.jtp.shared.messaging.Response;
+import org.reujdon.jtp.shared.messaging.messages.Response;
 
 import java.util.Map;
 

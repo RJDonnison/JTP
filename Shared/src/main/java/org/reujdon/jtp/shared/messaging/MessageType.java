@@ -1,5 +1,9 @@
 package org.reujdon.jtp.shared.messaging;
 
+import org.reujdon.jtp.shared.messaging.messages.Error;
+import org.reujdon.jtp.shared.messaging.messages.Request;
+import org.reujdon.jtp.shared.messaging.messages.Response;
+
 /**
  * Enumerates the types of messages supported in the transfer protocol.
  *
@@ -19,5 +23,14 @@ public enum MessageType {
     REQUEST,
     RESPONSE,
     ERROR,
-    AUTH
+    AUTH;
+
+    public static MessageType fromString(String value) {
+        for (MessageType type : values()) {
+            if (type.name().equalsIgnoreCase(value)) {
+                return type;
+            }
+        }
+        throw new IllegalArgumentException("Unknown message type: " + value);
+    }
 }
