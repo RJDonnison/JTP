@@ -3,9 +3,9 @@ package org.reujdon.jtp.client;
 import org.reujdon.jtp.client.commands.Command;
 import org.reujdon.jtp.client.commands.HelpCommand;
 import org.reujdon.jtp.shared.PropertiesUtil;
-import org.reujdon.jtp.shared.json.GsonAdapter;
-import org.reujdon.jtp.shared.json.JsonAdapter;
 import org.reujdon.jtp.shared.json.JsonException;
+import org.reujdon.jtp.shared.messaging.Message;
+import org.reujdon.jtp.shared.messaging.MessageFactory;
 import org.reujdon.jtp.shared.messaging.messages.Request;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +18,9 @@ import javax.net.ssl.TrustManagerFactory;
 import java.io.*;
 import java.security.KeyStore;
 import java.security.SecureRandom;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * A secure client that connects to a server over SSL/TLS.
@@ -73,7 +76,8 @@ import java.security.SecureRandom;
  * <p>
  * <b>Note:</b> Port values must be between 0-65535.
  */
-public class JTPClient {
+//TODO: look at runnable
+public class JTPClient implements AutoCloseable {
     private static final Logger logger = LoggerFactory.getLogger(JTPClient.class);
 
     // Constants for environment variable keys
@@ -96,7 +100,8 @@ public class JTPClient {
     private volatile boolean running = false;
     private Thread listeningThread;
 
-    private ResponseHandler responseHandler;
+    private final ResponseHandler responseHandler = new ResponseHandler();
+    private final ExecutorService responseExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
     /**
      * Constructs a new {@code Client} with default config file.
@@ -134,7 +139,7 @@ public class JTPClient {
     /**
      * Loads configuration from environment variables and properties file.
      *
-     * @param configFile the path to the properties file (may be null)
+     * @param configFile the path to the properties file (maybe null)
      */
     private void loadConfig(String configFile){
         loadFromEnvVars();
@@ -246,8 +251,6 @@ public class JTPClient {
             in = new BufferedReader(new InputStreamReader(sslSocket.getInputStream()));
             out = new PrintWriter(sslSocket.getOutputStream(), true);
 
-            responseHandler = new ResponseHandler();
-
             logger.info("Connected to server at {} : {}\n", host, port);
 
             running = true;
@@ -257,7 +260,8 @@ public class JTPClient {
             throw new RuntimeException("Client initialization failed", e);
         }
 
-        listeningThread = new Thread(this::handleResponses);
+//        ??? Virtual thread ???
+        listeningThread = new Thread(this::handleResponses, "Listening Thread");
         listeningThread.start();
     }
 
@@ -303,13 +307,13 @@ public class JTPClient {
      * Listens for and processes pending responses from the server.
      */
     private void handleResponses() {
-        String line;
+        String message;
 
         try {
-            while (running && (line = in.readLine()) != null) {
-                JsonAdapter response = new GsonAdapter(line);
+            while (running && (message = in.readLine()) != null) {
+                Message deserilaizedMessage = MessageFactory.deserialize(message);
 
-                responseHandler.processResponse(response);
+                responseExecutor.submit(() -> responseHandler.processResponse(deserilaizedMessage));
             }
         } catch (IOException e) {
             if (running)
@@ -347,6 +351,8 @@ public class JTPClient {
     /**
      * Closes the client connection and associated resources.
      */
+    @Override
+//    TODO: abstract
     public void close() {
         logger.info("Closing connection...");
 
@@ -369,9 +375,20 @@ public class JTPClient {
             logger.error("Error while closing the client SSL socket or streams: {}", e.getMessage());
         }
 
+        responseExecutor.shutdown();
+        try {
+            if (!responseExecutor.awaitTermination(1, TimeUnit.SECONDS)) {
+                logger.warn("Response executor did not terminate in time; forcing shutdown.");
+                responseExecutor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.error("Interrupted during response executor shutdown.");
+        }
+
         if (listeningThread != null && listeningThread.isAlive()) {
             try {
-                listeningThread.join(1000); // Optional: wait for the thread to clean up
+                listeningThread.join(1000);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 logger.error("Interrupted while waiting for listening thread to stop.");

@@ -7,7 +7,6 @@ import org.reujdon.jtp.shared.messaging.MessageTestSuite;
 @Suite
 @SelectClasses({
     MessageTestSuite.class,
-    ParseTest.class,
     PropertiesUtilTest.class,
     TokenUtilTest.class,
 })

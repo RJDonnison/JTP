@@ -76,7 +76,8 @@ import java.util.concurrent.TimeUnit;
  * @see ClientHandler
  * @see SSLServerSocket
  */
-public class JTPServer {
+//TODO: look at runnable
+public class JTPServer implements AutoCloseable {
     private static final Logger logger = LoggerFactory.getLogger(JTPServer.class);
 
     // Constants for environment variable keys
@@ -143,7 +144,7 @@ public class JTPServer {
     /**
      * Loads configuration from environment variables and properties file.
      *
-     * @param configFile the path to the properties file (may be null)
+     * @param configFile the path to the properties file (maybe null)
      */
     private void loadConfig(String configFile){
         loadFromEnvVars();
@@ -373,6 +374,7 @@ public class JTPServer {
      * @see #activeClients
      * @see ClientHandler#close()
      */
+    @Override
     public void close() {
         if (!running)
             logger.info("Server is closing or closed");
@@ -499,7 +501,8 @@ public class JTPServer {
     }
 
     public static void main(String[] args) {
-        JTPServer server = new JTPServer();
-        server.start();
+        try (JTPServer server = new JTPServer()) {
+            server.start();
+        }
     }
 }

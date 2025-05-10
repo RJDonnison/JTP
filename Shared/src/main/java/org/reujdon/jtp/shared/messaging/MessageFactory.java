@@ -26,6 +26,8 @@ public class MessageFactory {
     }
 
     public static Message deserialize(String json) {
+        if (json == null || json.isBlank()) return null;
+
         adapter.setJsonString(json);
         MessageType type = MessageType.fromString(adapter.getString("type"));
         Class<? extends Message> clazz = registry.get(type);

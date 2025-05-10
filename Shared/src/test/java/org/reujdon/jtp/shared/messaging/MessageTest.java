@@ -1,6 +1,5 @@
 package org.reujdon.jtp.shared.messaging;
 
-import org.json.JSONObject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -43,29 +42,10 @@ class MessageTest {
         assertEquals(true, message.getParam("key3"));
     }
 
-    @Test
-    void testAddDuplicateParameter() {
-        message.addParam("key", "value");
-        assertThrows(IllegalArgumentException.class, () -> message.addParam("key", "another-value"));
-    }
-
     @ParameterizedTest
     @ValueSource(strings = {"", " ", "\t", "\n"})
     void testAddParameterWithBlankKey(String blankKey) {
         assertThrows(IllegalArgumentException.class, () -> message.addParam(blankKey, "value"));
-    }
-
-    @Test
-    void testSetParameter() {
-        message.addParam("key", "initialValue");
-        message.setParam("key", "updatedValue");
-
-        assertEquals("updatedValue", message.getParam("key"));
-    }
-
-    @Test
-    void testSetParameterWithNonExistentKey() {
-        assertThrows(IllegalArgumentException.class, () -> message.setParam("nonexistent", "value"));
     }
 
     @Test
@@ -83,49 +63,6 @@ class MessageTest {
     @Test
     void testRemoveNonExistentParameter() {
         assertDoesNotThrow(() -> message.removeParam("nonexistent"));
-    }
-
-    @Test
-    void testToJSONStructure() {
-        message.addParam("param1", "value1");
-        message.addParam("param2", 42);
-
-        JSONObject json = message.toJSON();
-
-        assertEquals(3, json.length());
-
-        assertEquals(MessageType.REQUEST, json.getEnum(MessageType.class, "type"));
-
-        assertNotNull(json.get("id"));
-        assertEquals(message.getId(), json.get("id"));
-
-        JSONObject params = json.getJSONObject("params");
-        assertEquals(2, params.length());
-        assertEquals("value1", params.get("param1"));
-        assertEquals(42, params.get("param2"));
-    }
-
-    @Test
-    void testEmptyMessageToJSON() {
-        JSONObject json = message.toJSON();
-
-        assertEquals(2, json.length()); // Only type and id
-        assertFalse(json.has("params"));
-    }
-
-    @Test
-    void testDifferentMessageTypes() {
-        Message request = new TestMessage(MessageType.REQUEST);
-        Message response = new TestMessage(MessageType.RESPONSE);
-        Message error = new TestMessage(MessageType.ERROR);
-
-        assertEquals(MessageType.REQUEST, request.getType());
-        assertEquals(MessageType.RESPONSE, response.getType());
-        assertEquals(MessageType.ERROR, error.getType());
-
-        assertEquals(MessageType.REQUEST, request.toJSON().getEnum(MessageType.class, "type"));
-        assertEquals(MessageType.RESPONSE, response.toJSON().getEnum(MessageType.class, "type"));
-        assertEquals(MessageType.ERROR, error.toJSON().getEnum(MessageType.class, "type"));
     }
 
     @Test

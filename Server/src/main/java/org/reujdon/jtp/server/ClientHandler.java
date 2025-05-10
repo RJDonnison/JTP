@@ -1,10 +1,10 @@
 package org.reujdon.jtp.server;
 
-import org.reujdon.jtp.shared.json.GsonAdapter;
-import org.reujdon.jtp.shared.json.JsonAdapter;
 import org.reujdon.jtp.shared.json.JsonException;
-import org.reujdon.jtp.shared.messaging.MessageType;
+import org.reujdon.jtp.shared.messaging.Message;
+import org.reujdon.jtp.shared.messaging.MessageFactory;
 import org.reujdon.jtp.shared.messaging.messages.Error;
+import org.reujdon.jtp.shared.messaging.messages.Request;
 import org.reujdon.jtp.shared.messaging.messages.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,7 +15,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
-import java.util.Map;
 
 /**
  * Handles communication with a connected client over a secure SSL socket.
@@ -79,9 +78,10 @@ class ClientHandler implements Runnable {
             String message;
 
             while ((message = in.readLine()) != null) {
-                GsonAdapter json = new GsonAdapter(message);
+                Message deserilaizedMessage = MessageFactory.deserialize(message);
 
-                Task.of(() -> handleMessage(json)).run();
+//                TODO: remove
+                Task.of(() -> handleMessage(deserilaizedMessage)).run();
             }
         }
         catch (IOException e){
@@ -97,34 +97,37 @@ class ClientHandler implements Runnable {
     /**
      * Handles an incoming message from the client.
      *
-     * @param json the {@link JsonAdapter} containing the message data from the client
-     * @throws NullPointerException if the {@code json} is {@code null}
-     * @throws IllegalStateException if the message ID is missing or empty
+     * @throws NullPointerException if the {@link Message} is {@code null}
      */
-    private void handleMessage(JsonAdapter json) {
-        // Validate input
-        if (json == null)
-            throw new NullPointerException("Message JSON cannot be null");
+    private void handleMessage(Message message) {
+        if (message == null)
+            throw new NullPointerException("Message cannot be null");
 
-        MessageType type = json.getEnum("type", MessageType.class);
-        if (type == null)
-            throw new IllegalStateException("Message type is missing or empty"); //TODO: look at error handling
+        switch (message.getType()) {
+            case REQUEST:
+                handleRequest((Request) message);
+                break;
+            case null, default:
+                logger.warn("Unknown message type: {}", message.getType()); //TODO: send back error to client
+                break;
+        }
+    }
 
+    private void handleRequest(Request message) {
         // Extract and validate message ID
-        String commandId = json.getString("id");
-        if (commandId == null || commandId.trim().isEmpty())
-            throw new IllegalStateException("Message ID is missing or empty"); //TODO: look at error handling
-
-        // Parse parameters
-        Map<String, Object> params = json.getMap("params");
+        String commandId = message.getId();
+        if (commandId == null || commandId.isBlank()) {
+            logger.error("Message ID is missing or blank");
+            return; //TODO: send back error to client
+        }
 
         // Verify command exists
-        if (!params.containsKey("command")) {
+        if (!message.containsParam("command")) {
             sendError(commandId, "No command specified");
             return;
         }
 
-        String command = params.get("command").toString().trim();
+        String command = message.getParam("command").toString().trim();
         logger.info("Client: {}, Sent command: {}", clientId, command);
 
         // Get and execute handler
@@ -135,7 +138,7 @@ class ClientHandler implements Runnable {
                 return;
             }
 
-            Response response = handler.handle(params);
+            Response response = handler.handle(message);
             logger.info("Command {} executed successfully for client {}", command, clientId);
             sendResponse(commandId, response);
         } catch (Exception e) {

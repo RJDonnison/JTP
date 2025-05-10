@@ -158,4 +158,12 @@ public interface JsonAdapter {
      * @param json the JSON string
      */
     void setJsonString(String json);
+
+    /**
+     * Puts value into the raw JSON string with specified key.
+     *
+     * @param key the key to store the value under
+     * @param value the value to be put into the json
+     */
+    void put(String key, Object value);
 }

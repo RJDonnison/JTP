@@ -1,70 +1,41 @@
 package org.reujdon.jtp.client;
 
 import org.reujdon.jtp.client.commands.Command;
-import org.reujdon.jtp.shared.json.JsonAdapter;
-import org.reujdon.jtp.shared.messaging.MessageType;
+import org.reujdon.jtp.shared.messaging.Message;
 import org.reujdon.jtp.shared.messaging.messages.Request;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reujdon.async.Async;
 import reujdon.async.Task;
 
 import java.util.HashMap;
-import java.util.Map;
 
 class ResponseHandler {
     private static final Logger logger = LoggerFactory.getLogger(ResponseHandler.class);
 
-    private final HashMap<String, Command> pendingResponses;
+    private final HashMap<String, Command> pendingResponses = new HashMap<>();
 
-    public ResponseHandler() {
-        this.pendingResponses = new HashMap<>();
-    }
-
-    public void processResponse(JsonAdapter response) {
-        String id = response.getString("id");
-        String typeStr = response.getString("type");
-
-        if (typeStr == null) {
-            logger.warn("Missing 'type' in response: {}", response);
-            return;
-        }
-
-        Task.of(() -> handleRegularResponse(id, response)).run();
-    }
-
-    /**
-     * Handles the response from the server and passes to suitable {@link Request} function.
-     *
-     * @param response the {@link JsonAdapter} containing the server's response data
-     * @throws IllegalArgumentException if {@code response} or {@code request} is null
-     */
-    private void handleRegularResponse(String id, JsonAdapter response){
-        if (id == null || !pendingResponses.containsKey(id)) {
+    public void processResponse(Message response) {
+        if (response.getId() == null || !pendingResponses.containsKey(response.getId())) {
             logger.warn("Unmatched response: {}", response);
             return;
         }
+//  TODO: handle global responses
 
-        Command command = pendingResponses.remove(id);
+        Command command = pendingResponses.remove(response.getId());
         if (command == null)
-            throw new RuntimeException("Request was null for ID: " + id);
+            throw new RuntimeException("Request was null for ID: " + response.getId());
 
-        if (response == null)
-            throw new IllegalArgumentException("Response cannot be null");
-
-        MessageType type = response.getEnum("type", MessageType.class);
-
-        Map<String, Object> params = response.getMap("params");
-
-        switch (type) {
-            case ERROR ->
-                    command.onError(params.get("message").toString());
-
-            case RESPONSE ->
-                    command.onSuccess(params);
-
-            case null, default ->
-                    logger.warn("Unsupported message type: {}", response);
+        switch (response.getType()) {
+            case RESPONSE:
+                command.onSuccess(response.getParams());
+                break;
+            case ERROR:
+                Object message = response.getParam("message");
+                command.onError(message != null ? message.toString() : "Unknown error");
+                break;
+            case null, default:
+                logger.error("Unknown response type: {}", response.getType());
+                break;
         }
     }
 
@@ -76,14 +47,6 @@ class ResponseHandler {
      * @throws IllegalArgumentException if request or id is null or empty
      */
     private void handleTimeout(Command command, String id) {
-        if (command == null)
-            throw new IllegalArgumentException("Request cannot be null");
-
-        if (id == null || id.trim().isEmpty())
-            throw new IllegalArgumentException("Id cannot be null or empty");
-
-        Async.waitFor(command.getTimeout());
-
         if (pendingResponses.containsKey(id))
             command.onTimeout();
 
@@ -94,7 +57,7 @@ class ResponseHandler {
         pendingResponses.put(id, command);
 
         Task<Void> timeout = Task.of(() -> handleTimeout(command, id));
-        timeout.run();
+        timeout.delay(command.getTimeout());
     }
 
     public void removePendingRequest(String id) {

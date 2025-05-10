@@ -20,6 +20,7 @@ import java.util.UUID;
  *
  * @see MessageType
  */
+//TODO: move away from params
 public class Message {
     private String id;
     private final MessageType type;
@@ -76,7 +77,7 @@ public class Message {
      * @throws IllegalArgumentException if the key is invalid
      */
     public void addParam(String key, Object value) {
-        if (key.trim().isEmpty())
+        if (key.isBlank())
             throw new IllegalArgumentException("Key cannot be empty or null.");
 
         params.put(key, value);
@@ -150,6 +151,14 @@ public class Message {
      */
     public Object getParam(String key, Object defaultValue) {
         return params.getOrDefault(key, defaultValue);
+    }
+
+    public boolean containsParam(String key) {
+        return params.containsKey(key);
+    }
+
+    public Map<String, Object> getParams() {
+        return params;
     }
 
     /**

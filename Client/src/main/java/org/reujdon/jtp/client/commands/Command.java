@@ -20,10 +20,9 @@ public abstract class Command extends Request {
         this.timeout = timeout;
     }
 
-
     public long getTimeout() {
         return timeout;
-    };
+    }
 
     public void onError(String error){
         logger.error("Error: {}", error);

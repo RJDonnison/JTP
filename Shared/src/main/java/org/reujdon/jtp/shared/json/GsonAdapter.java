@@ -1,9 +1,9 @@
 package org.reujdon.jtp.shared.json;
 
-
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.reflect.TypeToken;
 
 import java.lang.reflect.Type;
 import java.util.Map;
@@ -19,6 +19,7 @@ public class GsonAdapter implements JsonAdapter {
 
     public GsonAdapter() {
         this.gson = new Gson();
+        setJsonString("{}");
     }
 
     public GsonAdapter(String jsonString) throws JsonException {
@@ -37,7 +38,6 @@ public class GsonAdapter implements JsonAdapter {
             throw new JsonException("Failed to get string for key: " + key, e);
         }
     }
-
 
     @Override
     public Integer getInt(String key) {
@@ -80,11 +80,12 @@ public class GsonAdapter implements JsonAdapter {
     }
 
     @Override
-    public Map getMap(String key) {
+    public Map<String, Object> getMap(String key) {
         try {
             JsonElement el = jsonObject.get(key);
             if (el != null && el.isJsonObject()) {
-                return gson.fromJson(el, Map.class);
+                Type type = new TypeToken<Map<String, Object>>(){}.getType();
+                return gson.fromJson(el, type);
             }
             return null;
         } catch (Exception e) {
@@ -128,7 +129,8 @@ public class GsonAdapter implements JsonAdapter {
     @Override
     public Map<String, Object> asMap() {
         try {
-            return gson.fromJson(jsonObject, Map.class);
+            Type type = new TypeToken<Map<String, Object>>(){}.getType();
+            return gson.fromJson(jsonObject, type);
         } catch (Exception e) {
             throw new JsonException("Failed to convert JSON to Map<String, Object>", e);
         }
@@ -195,6 +197,17 @@ public class GsonAdapter implements JsonAdapter {
                 throw new JsonException("JSON string did not produce a valid JsonObject (null)");
         } catch (Exception e) {
             throw new JsonException("Failed to parse raw JSON into JsonObject", e);
+        }
+    }
+
+    @Override
+    public void put(String key, Object value) {
+        try {
+            JsonElement element = gson.toJsonTree(value);
+            jsonObject.add(key, element);
+            jsonString = gson.toJson(jsonObject);
+        } catch (Exception e) {
+            throw new JsonException("Failed to put key: " + key + " with value: " + value, e);
         }
     }
 }

@@ -3,7 +3,6 @@ package org.reujdon.jtp.shared.messaging.messages;
 import org.reujdon.jtp.shared.messaging.Message;
 import org.reujdon.jtp.shared.messaging.MessageType;
 
-//TODO: javadoc
 public class Auth extends Message {
     public Auth(String id){
         super(id, MessageType.AUTH);
