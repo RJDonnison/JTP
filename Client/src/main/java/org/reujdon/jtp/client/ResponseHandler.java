@@ -19,7 +19,11 @@ class ResponseHandler {
             logger.warn("Unmatched response: {}", response);
             return;
         }
-//  TODO: handle global responses
+
+        if (response.getId().equals("*")) {
+            handleGlobalResponse(response);
+            return;
+        }
 
         Command command = pendingResponses.remove(response.getId());
         if (command == null)
@@ -35,6 +39,17 @@ class ResponseHandler {
                 break;
             case null, default:
                 logger.error("Unknown response type: {}", response.getType());
+                break;
+        }
+    }
+
+    private void handleGlobalResponse(Message response) {
+        switch (response.getType()) {
+            case ERROR:
+                logger.error("Server error: {}", response.getParam("message"));
+                break;
+            case null, default:
+                logger.warn("Unknown global response: {}", response);
                 break;
         }
     }

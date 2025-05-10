@@ -87,7 +87,7 @@ class ClientHandler implements Runnable {
         catch (IOException e){
             logger.error("IOException during client communication: {}", e.getMessage());
         } catch (JsonException e) {
-            logger.error("Client sent invalid json: {}", e.getMessage());
+            sendError("*", "Invalid json: " + e.getMessage());
         }
         finally {
             close();
@@ -103,24 +103,24 @@ class ClientHandler implements Runnable {
         if (message == null)
             throw new NullPointerException("Message cannot be null");
 
+        // Extract and validate message ID
+        String commandId = message.getId();
+        if (commandId == null || commandId.isBlank()) {
+            sendError("*", "Message ID is missing or blank");
+            return;
+        }
+
         switch (message.getType()) {
             case REQUEST:
-                handleRequest((Request) message);
+                handleRequest((Request) message, commandId);
                 break;
             case null, default:
-                logger.warn("Unknown message type: {}", message.getType()); //TODO: send back error to client
+                sendError(commandId, "Unknown message type: " + message.getType());
                 break;
         }
     }
 
-    private void handleRequest(Request message) {
-        // Extract and validate message ID
-        String commandId = message.getId();
-        if (commandId == null || commandId.isBlank()) {
-            logger.error("Message ID is missing or blank");
-            return; //TODO: send back error to client
-        }
-
+    private void handleRequest(Request message, String commandId) {
         // Verify command exists
         if (!message.containsParam("command")) {
             sendError(commandId, "No command specified");
