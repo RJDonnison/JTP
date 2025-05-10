@@ -4,7 +4,6 @@ package org.reujdon.jtp.shared.json;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParseException;
 
 import java.lang.reflect.Type;
 import java.util.Map;
@@ -13,67 +12,102 @@ import java.util.Set;
 /**
  * A JsonAdapter implementation for Gson.
  */
-//TODO: error handling
 public class GsonAdapter implements JsonAdapter {
     private final Gson gson;
     private String jsonString;
+    private JsonObject jsonObject;
 
     public GsonAdapter() {
         this.gson = new Gson();
     }
 
-    public GsonAdapter(String jsonString) {
+    public GsonAdapter(String jsonString) throws JsonException {
         this();
         this.jsonString = jsonString;
-    }
 
-    private JsonObject getJsonObject() {
-        return gson.fromJson(jsonString, JsonObject.class);
+        try {
+            this.jsonObject = gson.fromJson(jsonString, JsonObject.class);
+            if (jsonObject == null)
+                throw new JsonException("JSON string did not produce a valid JsonObject (null)");
+        } catch (Exception e) {
+            throw new JsonException("Failed to parse raw JSON into JsonObject", e);
+        }
     }
 
     @Override
     public String getString(String key) {
-        JsonElement el = getJsonObject().get(key);
-        return (el != null && el.isJsonPrimitive() && el.getAsJsonPrimitive().isString()) ? el.getAsString() : null;
+        try {
+            JsonElement el = jsonObject.get(key);
+            if (el != null && el.isJsonPrimitive() && el.getAsJsonPrimitive().isString())
+                return el.getAsString();
+            return null;
+        } catch (Exception e) {
+            throw new JsonException("Failed to get string for key: " + key, e);
+        }
     }
 
 
     @Override
     public Integer getInt(String key) {
-        JsonElement el = getJsonObject().get(key);
-        return (el != null && el.isJsonPrimitive() && el.getAsJsonPrimitive().isNumber()) ? el.getAsInt() : null;
+        try {
+            JsonElement el = jsonObject.get(key);
+            return (el != null && el.isJsonPrimitive() && el.getAsJsonPrimitive().isNumber()) ? el.getAsInt() : null;
+        } catch (Exception e) {
+            throw new JsonException("Failed to get int for key: " + key, e);
+        }
     }
 
     @Override
     public Long getLong(String key) {
-        JsonElement el = getJsonObject().get(key);
-        return (el != null && el.isJsonPrimitive() && el.getAsJsonPrimitive().isNumber()) ? el.getAsLong() : null;
+        try {
+            JsonElement el = jsonObject.get(key);
+            return (el != null && el.isJsonPrimitive() && el.getAsJsonPrimitive().isNumber()) ? el.getAsLong() : null;
+        } catch (Exception e) {
+            throw new JsonException("Failed to get long for key: " + key, e);
+        }
     }
 
     @Override
     public Double getDouble(String key) {
-        JsonElement el = getJsonObject().get(key);
-        return (el != null && el.isJsonPrimitive() && el.getAsJsonPrimitive().isNumber()) ? el.getAsDouble() : null;
+        try {
+            JsonElement el = jsonObject.get(key);
+            return (el != null && el.isJsonPrimitive() && el.getAsJsonPrimitive().isNumber()) ? el.getAsDouble() : null;
+        } catch (Exception e) {
+            throw new JsonException("Failed to get double for key: " + key, e);
+        }
     }
 
     @Override
     public Boolean getBoolean(String key) {
-        JsonElement el = getJsonObject().get(key);
-        return (el != null && el.isJsonPrimitive() && el.getAsJsonPrimitive().isBoolean()) ? el.getAsBoolean() : null;
+        try {
+            JsonElement el = jsonObject.get(key);
+            return (el != null && el.isJsonPrimitive() && el.getAsJsonPrimitive().isBoolean()) ? el.getAsBoolean() : null;
+        } catch (Exception e) {
+            throw new JsonException("Failed to get boolean for key: " + key, e);
+        }
     }
 
     @Override
     public Map getMap(String key) {
-        JsonElement el = getJsonObject().get(key);
-        if (el != null && el.isJsonObject())
-            return gson.fromJson(el, Map.class);
-        return null;
+        try {
+            JsonElement el = jsonObject.get(key);
+            if (el != null && el.isJsonObject()) {
+                return gson.fromJson(el, Map.class);
+            }
+            return null;
+        } catch (Exception e) {
+            throw new JsonException("Failed to get map for key: " + key, e);
+        }
     }
 
     @Override
     public <T> T get(String key, Class<T> clazz) {
-        JsonElement el = getJsonObject().get(key);
-        return el != null ? gson.fromJson(el, clazz) : null;
+        try {
+            JsonElement el = jsonObject.get(key);
+            return el != null ? gson.fromJson(el, clazz) : null;
+        } catch (Exception e) {
+            throw new JsonException("Failed to deserialize key: " + key + " into " + clazz.getSimpleName(), e);
+        }
     }
 
     @Override
@@ -83,45 +117,60 @@ public class GsonAdapter implements JsonAdapter {
 
     @Override
     public boolean has(String key) {
-        return getJsonObject().has(key);
+        try {
+            return jsonObject.has(key);
+        } catch (Exception e) {
+            throw new JsonException("Failed to check presence of key: " + key, e);
+        }
     }
 
     @Override
     public Set<String> keySet() {
-        return getJsonObject().keySet();
+        try {
+            return jsonObject.keySet();
+        } catch (Exception e) {
+            throw new JsonException("Failed to get key set from JSON", e);
+        }
     }
 
     @Override
     public Map<String, Object> asMap() {
-        return gson.fromJson(getJsonObject(), Map.class);
+        try {
+            return gson.fromJson(jsonObject, Map.class);
+        } catch (Exception e) {
+            throw new JsonException("Failed to convert JSON to Map<String, Object>", e);
+        }
     }
 
     @Override
     public <E extends Enum<E>> E getEnum(String key, Class<E> enumClass) {
-        JsonElement el = getJsonObject().get(key);
-        if (el == null || !el.isJsonPrimitive()) return null;
         try {
+            JsonElement el = jsonObject.get(key);
+            if (el == null || !el.isJsonPrimitive()) return null;
+
             return Enum.valueOf(enumClass, el.getAsString());
         } catch (IllegalArgumentException e) {
-            return null;
+            throw new JsonException("Invalid enum value for key: " + key, e);
+        } catch (Exception e) {
+            throw new JsonException("Failed to get enum for key: " + key, e);
         }
     }
 
     @Override
-    public <T> T deserialize(String json, Class<T> clazz) throws JsonParseException {
+    public <T> T deserialize(String json, Class<T> clazz) throws JsonException {
         try {
             return gson.fromJson(json, clazz);
-        } catch (JsonParseException e) {
-            throw new JsonParseException("Failed to deserialize into " + clazz.getSimpleName(), e);
+        } catch (JsonException e) {
+            throw new JsonException("Failed to deserialize JSON into " + clazz.getSimpleName(), e);
         }
     }
 
     @Override
-    public <T> T deserialize(String json, Type typeOfT) throws JsonParseException {
+    public <T> T deserialize(String json, Type typeOfT) throws JsonException {
         try {
             return gson.fromJson(json, typeOfT);
-        } catch (JsonParseException e) {
-            throw new JsonParseException("Failed to deserialize into type " + typeOfT.getTypeName(), e);
+        } catch (JsonException e) {
+            throw new JsonException("Failed to deserialize into type " + typeOfT.getTypeName(), e);
         }
     }
 
@@ -131,21 +180,17 @@ public class GsonAdapter implements JsonAdapter {
     }
 
     @Override
-    public String extractType(String json) {
-        JsonElement el = gson.fromJson(json, JsonElement.class);
-        return (el.isJsonObject() && el.getAsJsonObject().has("type"))
-                ? el.getAsJsonObject().get("type").getAsString()
-                : null;
-    }
-
-    @Override
     public String getRawJson() {
         return jsonString;
     }
 
     @Override
     public JsonElement getJsonElement() {
-        return gson.fromJson(jsonString, JsonElement.class);
+        try {
+            return gson.fromJson(jsonString, JsonElement.class);
+        } catch (Exception e) {
+            throw new JsonException("Failed to parse raw JSON into JsonElement", e);
+        }
     }
 
     @Override

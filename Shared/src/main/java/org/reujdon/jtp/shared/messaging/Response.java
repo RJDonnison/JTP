@@ -64,8 +64,6 @@ public class Response extends Message {
         this.addParams(data);
     }
 
-//    Decupled
-
     /**
      * Constructs a Response message with the specified initial data.
      *

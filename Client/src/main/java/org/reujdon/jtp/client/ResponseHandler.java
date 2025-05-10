@@ -17,7 +17,6 @@ class ResponseHandler {
     private static final Logger logger = LoggerFactory.getLogger(ResponseHandler.class);
 
     private final HashMap<String, Request> pendingResponses;
-//    private Request cachedRequest;
 
     private final PrintWriter out;
 
@@ -61,7 +60,6 @@ class ResponseHandler {
         }
 
         Task.of(() -> handleRegularResponse(id, response)).run();
-//        TODO: handle invalid json
     }
 
     private void handleGlobalError(JsonAdapter response) {
@@ -76,8 +74,6 @@ class ResponseHandler {
             logger.warn("AUTH response without matching request: {}", response);
 
         logger.info("Authenticating...");
-
-//        cachedRequest = request;
 
 //        TODO: put in key
         out.println(new Auth("*", "test").toJSON());

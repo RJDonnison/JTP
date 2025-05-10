@@ -4,6 +4,7 @@ import org.reujdon.jtp.shared.Permission;
 import org.reujdon.jtp.shared.TokenUtil;
 import org.reujdon.jtp.shared.json.GsonAdapter;
 import org.reujdon.jtp.shared.json.JsonAdapter;
+import org.reujdon.jtp.shared.json.JsonException;
 import org.reujdon.jtp.shared.messaging.Auth;
 import org.reujdon.jtp.shared.messaging.Error;
 import org.reujdon.jtp.shared.messaging.MessageType;
@@ -96,12 +97,13 @@ class ClientHandler implements Runnable {
             while ((message = in.readLine()) != null) {
                 GsonAdapter json = new GsonAdapter(message);
 
-                //            TODO: handle invalid json
                 Task.of(() -> handleMessage(json)).run();
             }
         }
         catch (IOException e){
             logger.error("IOException during client communication: {}", e.getMessage());
+        } catch (JsonException e) {
+            logger.error("Client sent invalid json: {}", e.getMessage());
         }
         finally {
             close();
