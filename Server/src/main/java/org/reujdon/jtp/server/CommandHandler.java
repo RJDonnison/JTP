@@ -1,6 +1,5 @@
 package org.reujdon.jtp.server;
 
-import org.json.JSONObject;
 import org.reujdon.jtp.shared.messaging.Response;
 
 import java.util.Map;
@@ -19,7 +18,6 @@ import java.util.Map;
  * </ul>
  *
  *
- * @see JSONObject
  * @see CommandRegistry
  */
 @FunctionalInterface

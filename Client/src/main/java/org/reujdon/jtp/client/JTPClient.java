@@ -1,9 +1,9 @@
 package org.reujdon.jtp.client;
 
-import org.json.JSONException;
-import org.json.JSONObject;
 import org.reujdon.jtp.client.commands.HelpCommand;
 import org.reujdon.jtp.shared.PropertiesUtil;
+import org.reujdon.jtp.shared.json.GsonAdapter;
+import org.reujdon.jtp.shared.json.JsonAdapter;
 import org.reujdon.jtp.shared.messaging.Request;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -305,17 +305,16 @@ public class JTPClient {
 
         try {
             while (running && (line = in.readLine()) != null) {
-                JSONObject response = new JSONObject(line);
+                JsonAdapter response = new GsonAdapter(line);
 
                 responseHandler.processResponse(response);
+//                TODO: handle invalid json
             }
         } catch (IOException e) {
             if (running)
                 logger.error("Error while listening for responses: {}", e.getMessage());
             else
                 logger.info("Listening thread closed.");
-        } catch (JSONException e) {
-            logger.error("Error parsing JSON: {}", e.getMessage());
         } catch (Exception e) {
             logger.error("Unexpected error while handling response: {}", e.getMessage());
         }
@@ -337,11 +336,9 @@ public class JTPClient {
 
         request.addParam("token", responseHandler.getSessionToken());
 
-        JSONObject json = request.toJSON();
-
         responseHandler.addPendingRequest(id, request);
 
-        out.println(json);
+        out.println(request.toJSON());
         out.flush();
     }
 

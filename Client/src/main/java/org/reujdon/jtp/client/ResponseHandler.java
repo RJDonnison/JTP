@@ -1,8 +1,6 @@
 package org.reujdon.jtp.client;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.reujdon.jtp.shared.Parse;
+import org.reujdon.jtp.shared.json.JsonAdapter;
 import org.reujdon.jtp.shared.messaging.Auth;
 import org.reujdon.jtp.shared.messaging.MessageType;
 import org.reujdon.jtp.shared.messaging.Request;
@@ -31,50 +29,47 @@ class ResponseHandler {
         this.out = out;
     }
 
-    public void processResponse(JSONObject response) {
-        try {
-            String id = response.optString("id", null);
-            String typeStr = response.optString("type", null);
+    public void processResponse(JsonAdapter response) {
+        String id = response.getString("id");
+        String typeStr = response.getString("type");
 
-            if (typeStr == null) {
-                logger.warn("Missing 'type' in response: {}", response);
-                return;
-            }
-
-            MessageType type;
-            try {
-                type = MessageType.valueOf(typeStr);
-            } catch (IllegalArgumentException e) {
-                logger.warn("Unknown MessageType '{}': {}", typeStr, response);
-                return;
-            }
-
-            if ("*".equals(id)){
-                if (type == MessageType.ERROR)
-                    Task.of(() -> handleGlobalError(response)).run();
-                else if (type == MessageType.AUTH)
-                    Task.of(() -> handleAuthResponse(response)).run();
-
-                return;
-            }
-
-            if (type == MessageType.AUTH){
-                Task.of(() -> handleAuthRequest(id, response)).run();
-                return;
-            }
-
-            Task.of(() -> handleRegularResponse(id, response)).run();
-        } catch (JSONException e) {
-            logger.error("Failed to parse response JSON: {}", e.getMessage());
+        if (typeStr == null) {
+            logger.warn("Missing 'type' in response: {}", response);
+            return;
         }
+
+        MessageType type;
+        try {
+            type = MessageType.valueOf(typeStr);
+        } catch (IllegalArgumentException e) {
+            logger.warn("Unknown MessageType '{}': {}", typeStr, response);
+            return;
+        }
+
+        if ("*".equals(id)){
+            if (type == MessageType.ERROR)
+                Task.of(() -> handleGlobalError(response)).run();
+            else if (type == MessageType.AUTH)
+                Task.of(() -> handleAuthResponse(response)).run();
+
+            return;
+        }
+
+        if (type == MessageType.AUTH){
+            Task.of(() -> handleAuthRequest(id, response)).run();
+            return;
+        }
+
+        Task.of(() -> handleRegularResponse(id, response)).run();
+//        TODO: handle invalid json
     }
 
-    private void handleGlobalError(JSONObject response) {
-        Map<String, Object> params = Parse.Params(response);
+    private void handleGlobalError(JsonAdapter response) {
+        Map<String, Object> params = response.getMap("params");
         logger.error("Server error: {}", params.getOrDefault("message", "No message"));
     }
 
-    private void handleAuthRequest(String id, JSONObject response) {
+    private void handleAuthRequest(String id, JsonAdapter response) {
         Request request = pendingResponses.remove(id);
 
         if (request == null)
@@ -91,8 +86,8 @@ class ResponseHandler {
 //    TODO: handle multiple AUTH request and response at once
 //    TODO: handle send command when AUTH
 //    TODO: handle failed AUTH
-    private void handleAuthResponse(JSONObject response) {
-        String token = Parse.Params(response).getOrDefault("key", null).toString();
+    private void handleAuthResponse(JsonAdapter response) {
+        String token = response.getMap("params").getOrDefault("key", null).toString();
 
         if (token == null) {
             logger.warn("Auth response without token: {}", response);
@@ -111,10 +106,10 @@ class ResponseHandler {
     /**
      * Handles the response from the server and passes to suitable {@link Request} function.
      *
-     * @param response the {@link JSONObject} containing the server's response data
+     * @param response the {@link JsonAdapter} containing the server's response data
      * @throws IllegalArgumentException if {@code response} or {@code request} is null
      */
-    private void handleRegularResponse(String id, JSONObject response){
+    private void handleRegularResponse(String id, JsonAdapter response){
         if (id == null || !pendingResponses.containsKey(id)) {
             logger.warn("Unmatched response: {}", response);
             return;
@@ -127,9 +122,9 @@ class ResponseHandler {
         if (response == null)
             throw new IllegalArgumentException("Response cannot be null");
 
-        MessageType type = response.getEnum(MessageType.class, "type");
+        MessageType type = response.getEnum("type", MessageType.class);
 
-        Map<String, Object> params = Parse.Params(response);
+        Map<String, Object> params = response.getMap("params");
 
         switch (type) {
             case ERROR ->

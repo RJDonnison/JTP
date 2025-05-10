@@ -1,10 +1,9 @@
 package org.reujdon.jtp.server;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.reujdon.jtp.shared.Parse;
 import org.reujdon.jtp.shared.Permission;
 import org.reujdon.jtp.shared.TokenUtil;
+import org.reujdon.jtp.shared.json.GsonAdapter;
+import org.reujdon.jtp.shared.json.JsonAdapter;
 import org.reujdon.jtp.shared.messaging.Auth;
 import org.reujdon.jtp.shared.messaging.Error;
 import org.reujdon.jtp.shared.messaging.MessageType;
@@ -95,15 +94,14 @@ class ClientHandler implements Runnable {
             String message;
 
             while ((message = in.readLine()) != null) {
-                JSONObject json = new JSONObject(message);
+                GsonAdapter json = new GsonAdapter(message);
 
+                //            TODO: handle invalid json
                 Task.of(() -> handleMessage(json)).run();
             }
         }
         catch (IOException e){
             logger.error("IOException during client communication: {}", e.getMessage());
-        } catch (JSONException e){
-            sendError("*", "Invalid JSON response: " + e.getMessage());
         }
         finally {
             close();
@@ -113,16 +111,16 @@ class ClientHandler implements Runnable {
     /**
      * Handles an incoming message from the client.
      *
-     * @param json the {@link JSONObject} containing the message data from the client
+     * @param json the {@link JsonAdapter} containing the message data from the client
      * @throws NullPointerException if the {@code json} is {@code null}
      * @throws IllegalStateException if the message ID is missing or empty
      */
-    private void handleMessage(JSONObject json) {
+    private void handleMessage(JsonAdapter json) {
         // Validate input
         if (json == null)
             throw new NullPointerException("Message JSON cannot be null");
 
-        MessageType type = json.getEnum(MessageType.class, "type");
+        MessageType type = json.getEnum("type", MessageType.class);
         if (type == null)
             throw new IllegalStateException("Message type is missing or empty"); //TODO: look at error handling
 
@@ -132,7 +130,7 @@ class ClientHandler implements Runnable {
             throw new IllegalStateException("Message ID is missing or empty"); //TODO: look at error handling
 
         // Parse parameters
-        Map<String, Object> params = Parse.Params(json);
+        Map<String, Object> params = json.getMap("params");
 
         // Check if Auth request
         if (type == MessageType.AUTH && params.containsKey("key")) {

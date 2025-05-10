@@ -1,6 +1,6 @@
 package org.reujdon.jtp.shared.messaging;
 
-import org.json.JSONObject;
+import org.reujdon.jtp.shared.json.JsonAdapter;
 
 import java.util.Map;
 
@@ -58,18 +58,20 @@ public class Response extends Message {
      * @param data Initial response data as a JSONObject (can be null)
      * @throws IllegalArgumentException if id is null or empty
      */
-    public Response(String id, JSONObject data){
+    public Response(String id, JsonAdapter data){
         this(id);
 
         this.addParams(data);
     }
+
+//    Decupled
 
     /**
      * Constructs a Response message with the specified initial data.
      *
      * @param data Initial response data as a JSONObject (can be null)
      */
-    public Response(JSONObject data){
+    public Response(JsonAdapter data){
         super(MessageType.RESPONSE);
 
         this.addParams(data);

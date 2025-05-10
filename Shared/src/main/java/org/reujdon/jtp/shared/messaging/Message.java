@@ -1,7 +1,7 @@
 package org.reujdon.jtp.shared.messaging;
 
-import org.json.JSONException;
-import org.json.JSONObject;
+import org.reujdon.jtp.shared.json.GsonAdapter;
+import org.reujdon.jtp.shared.json.JsonAdapter;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -19,7 +19,6 @@ import java.util.UUID;
  *
  *
  * @see MessageType
- * @see JSONObject
  */
 abstract class Message {
     private String id;
@@ -103,7 +102,7 @@ abstract class Message {
      *
      * @param data JSONObject containing parameters to add (can be null)
      */
-    protected void addParams(JSONObject data) {
+    protected void addParams(JsonAdapter data) {
         if (data == null)
             return;
 
@@ -165,10 +164,8 @@ abstract class Message {
      * </ul>
      *
      * @return a JSONObject containing the complete message structure
-     * @throws JSONException if there is an error during JSON serialization
      *
      * @see MessageType
-     * @see JSONObject
      *
      * @Example:
      * <pre>
@@ -184,14 +181,7 @@ abstract class Message {
      * }
      * </pre>
      */
-    public JSONObject toJSON() {
-        JSONObject json = new JSONObject();
-        json.put("type", type);
-        json.put("id", id);
-
-        if (!params.isEmpty())
-            json.put("params", new JSONObject(params));
-
-        return json;
+    public String toJSON() {
+        return new GsonAdapter().serialize(this);
     }
 }

@@ -23,9 +23,9 @@ subprojects {
     dependencies {
         implementation("org.reujdon.async:Java-Async:1.0.0")
 
-        implementation 'org.json:json:20240303'
         implementation 'org.slf4j:slf4j-api:2.0.17'
         implementation 'ch.qos.logback:logback-classic:1.4.7'
+        implementation 'com.google.code.gson:gson:2.8.8'
 
         // Test dependencies
         testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.2'
