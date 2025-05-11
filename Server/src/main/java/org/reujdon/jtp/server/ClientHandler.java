@@ -1,8 +1,11 @@
 package org.reujdon.jtp.server;
 
+import org.reujdon.jtp.shared.Permission;
+import org.reujdon.jtp.shared.TokenUtil;
 import org.reujdon.jtp.shared.json.JsonException;
 import org.reujdon.jtp.shared.messaging.Message;
 import org.reujdon.jtp.shared.messaging.MessageFactory;
+import org.reujdon.jtp.shared.messaging.messages.Auth;
 import org.reujdon.jtp.shared.messaging.messages.Error;
 import org.reujdon.jtp.shared.messaging.messages.Request;
 import org.reujdon.jtp.shared.messaging.messages.Response;
@@ -14,6 +17,8 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Handles communication with a connected client over a secure SSL socket.
@@ -39,8 +44,22 @@ class ClientHandler implements Runnable {
 
     private final String clientId;
 
+//    TODO: secure storage
+    private final String sessionToken;
+    private Permission clientPermission;
+
     private BufferedReader in;
     private PrintWriter out;
+
+//    TODO: separate to file / secure store
+    private static final Map<String, Permission> KEYS = new HashMap<>();
+
+    static {
+        KEYS.put("None", Permission.NONE);
+        KEYS.put("Read", Permission.READ);
+        KEYS.put("Write", Permission.WRITE);
+        KEYS.put("Full", Permission.FULL);
+    }
 
     /**
      * Constructs a new {@code ClientHandler} with the specified SSL socket and server.
@@ -63,6 +82,7 @@ class ClientHandler implements Runnable {
         this.clientSocket = socket;
         this.server = server;
         this.clientId = socket.getRemoteSocketAddress().toString();
+        this.sessionToken = TokenUtil.generateSessionToken();
     }
 
     /**
@@ -112,6 +132,9 @@ class ClientHandler implements Runnable {
             case REQUEST:
                 handleRequest((Request) message, commandId);
                 break;
+            case AUTH:
+                handleAuth((Auth) message);
+                break;
             case null, default:
                 sendError(commandId, "Unknown message type: " + message.getType());
                 break;
@@ -119,6 +142,11 @@ class ClientHandler implements Runnable {
     }
 
     private void handleRequest(Request message, String commandId) {
+        if (!message.containsParam("token") || !message.getParam("token").equals(sessionToken)) {
+            sendError(commandId, "Missing or invalid token");
+            return;
+        }
+
         // Verify command exists
         if (!message.containsParam("command")) {
             sendError(commandId, "No command specified");
@@ -136,12 +164,28 @@ class ClientHandler implements Runnable {
                 return;
             }
 
+            if (!clientPermission.hasPermission(handler.requiredPermission())) {
+                sendError(commandId, "Permission denied");
+                return;
+            }
+
             Response response = handler.handle(message);
             logger.info("Command {} executed successfully for client {}", command, clientId);
             sendResponse(commandId, response);
         } catch (Exception e) {
             sendError(commandId, "Command execution failed: " + e.getMessage());
         }
+    }
+
+    private void handleAuth(Auth auth) {
+        if (KEYS.containsKey(auth.getKey())) {
+            auth.setToken(this.sessionToken);
+            this.clientPermission = KEYS.get(auth.getKey());
+            auth.success();
+        }
+
+        out.println(auth.toJSON());
+        out.flush();
     }
 
     /**

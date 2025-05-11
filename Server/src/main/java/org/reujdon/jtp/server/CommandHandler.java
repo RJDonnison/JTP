@@ -1,5 +1,6 @@
 package org.reujdon.jtp.server;
 
+import org.reujdon.jtp.shared.Permission;
 import org.reujdon.jtp.shared.messaging.Message;
 import org.reujdon.jtp.shared.messaging.messages.Response;
 
@@ -19,8 +20,8 @@ import org.reujdon.jtp.shared.messaging.messages.Response;
  *
  * @see CommandRegistry
  */
-@FunctionalInterface
 public interface CommandHandler {
+    Permission requiredPermission();
     /**
      * Processes a command with the given parameters and returns a JSON response.
      *

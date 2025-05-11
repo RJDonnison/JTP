@@ -2,6 +2,7 @@ package org.reujdon.jtp.client;
 
 import org.reujdon.jtp.client.commands.Command;
 import org.reujdon.jtp.shared.messaging.Message;
+import org.reujdon.jtp.shared.messaging.messages.Auth;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,14 +13,18 @@ class ResponseHandler {
 
     private final HashMap<String, Command> pendingResponses = new HashMap<>();
 
+//    TODO: secure store
+    private String token = null;
+    private boolean authenticated = false;
+
     public void processResponse(Message response) {
-        if (response.getId() == null || !pendingResponses.containsKey(response.getId())) {
-            logger.warn("Unmatched response: {}", response);
+        if (response.getId().equals("*")) {
+            handleGlobalResponse(response);
             return;
         }
 
-        if (response.getId().equals("*")) {
-            handleGlobalResponse(response);
+        if (response.getId() == null || !pendingResponses.containsKey(response.getId())) {
+            logger.warn("Unmatched response: {}", response);
             return;
         }
 
@@ -46,10 +51,30 @@ class ResponseHandler {
             case ERROR:
                 logger.error("Server error: {}", response.getParam("message"));
                 break;
+            case AUTH:
+                handleAuth((Auth) response);
+                break;
             case null, default:
                 logger.warn("Unknown global response: {}", response);
                 break;
         }
+    }
+
+    private void handleAuth(Auth auth) {
+        if (!auth.getSuccess())
+            throw new RuntimeException("Client authentication failed");
+
+        logger.info("Authentication success");
+        this.token = auth.getToken();
+        this.authenticated = true;
+    }
+
+    public String getToken() {
+        return token;
+    }
+
+    public boolean isAuthenticated() {
+        return authenticated;
     }
 
     public void addPendingRequest(String id, Command command) {

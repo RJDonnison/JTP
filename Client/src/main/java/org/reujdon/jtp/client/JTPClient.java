@@ -6,6 +6,7 @@ import org.reujdon.jtp.shared.PropertiesUtil;
 import org.reujdon.jtp.shared.json.JsonException;
 import org.reujdon.jtp.shared.messaging.Message;
 import org.reujdon.jtp.shared.messaging.MessageFactory;
+import org.reujdon.jtp.shared.messaging.messages.Auth;
 import org.reujdon.jtp.shared.messaging.messages.Request;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +19,8 @@ import javax.net.ssl.TrustManagerFactory;
 import java.io.*;
 import java.security.KeyStore;
 import java.security.SecureRandom;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -85,6 +88,8 @@ public class JTPClient implements Runnable, AutoCloseable {
     private static final String ENV_TRUSTSTORE_PATH = "CLIENT_TRUSTSTORE_PATH";
     private static final String ENV_TRUSTSTORE_PASSWORD = "CLIENT_TRUSTSTORE_PASSWORD";
     private static final String DEFAULT_CONFIG_FILE = "client.properties";
+    //    TODO: Add to env
+    private static final String apiKey = "None";
 
     private String host;
     private int port = -1;
@@ -97,10 +102,13 @@ public class JTPClient implements Runnable, AutoCloseable {
     private PrintWriter out;
 
     private volatile boolean running = false;
+
     private Thread listeningThread;
 
     private final ResponseHandler responseHandler = new ResponseHandler();
     private final ExecutorService responseExecutor = Executors.newVirtualThreadPerTaskExecutor();
+
+    private final Queue<Command> pendingQueue = new ConcurrentLinkedQueue<>();
 
     /**
      * Constructs a new {@code Client} with default config file.
@@ -263,6 +271,8 @@ public class JTPClient implements Runnable, AutoCloseable {
 //        ??? Virtual thread ???
         listeningThread = new Thread(this::handleResponses, "Listening Thread");
         listeningThread.start();
+
+        sendAuth();
     }
 
     /**
@@ -303,6 +313,14 @@ public class JTPClient implements Runnable, AutoCloseable {
         }
     }
 
+    private void sendAuth() {
+        logger.info("Client authenticating...");
+
+        Auth auth = new Auth(apiKey);
+        out.println(auth.toJSON());
+        out.flush();
+    }
+
     /**
      * Listens for and processes pending responses from the server.
      */
@@ -313,7 +331,12 @@ public class JTPClient implements Runnable, AutoCloseable {
             while (running && (message = in.readLine()) != null) {
                 Message deserilaizedMessage = MessageFactory.deserialize(message);
 
-                responseExecutor.submit(() -> responseHandler.processResponse(deserilaizedMessage));
+                responseExecutor.submit(() -> {
+                    responseHandler.processResponse(deserilaizedMessage);
+
+                    if (responseHandler.isAuthenticated() && !pendingQueue.isEmpty())
+                        flushPendingQueue();
+                });
             }
         } catch (IOException e) {
             if (running)
@@ -341,10 +364,34 @@ public class JTPClient implements Runnable, AutoCloseable {
         if (id == null || id.isBlank())
             throw new IllegalArgumentException("Command id cannot be null or blank");
 
-        responseHandler.addPendingRequest(id, command);
+        if (!responseHandler.isAuthenticated()){
+            logger.warn("Client is not authenticated queuing command: {}", id);
+            pendingQueue.add(command);
+            return;
+        }
 
-        out.println(command.toJSON());
-        out.flush();
+        sendCommandNow(command);
+    }
+
+    private void flushPendingQueue() {
+        Command command;
+        while ((command = pendingQueue.poll()) != null) {
+            logger.info("Sending queued command: {}", command.getId());
+            sendCommandNow(command);
+        }
+    }
+
+    private void sendCommandNow(Command command) {
+        command.setToken(responseHandler.getToken());
+
+        responseHandler.addPendingRequest(command.getId(), command);
+
+        try {
+            out.println(command.toJSON());
+            out.flush();
+        } catch (Exception e) {
+            logger.error("Failed to send command: {}", e.getMessage(), e);
+        }
     }
 
     /**

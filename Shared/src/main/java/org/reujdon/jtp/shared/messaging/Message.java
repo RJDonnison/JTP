@@ -193,4 +193,13 @@ public class Message {
     public String toJSON() {
         return new GsonAdapter().serialize(this);
     }
+
+    @Override
+    public String toString() {
+        return "Message{" +
+                "id='" + id + '\'' +
+                ", type=" + type +
+                ", params=" + params +
+                '}';
+    }
 }
