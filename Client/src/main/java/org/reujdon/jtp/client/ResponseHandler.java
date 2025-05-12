@@ -13,7 +13,6 @@ class ResponseHandler {
 
     private final HashMap<String, Command> pendingResponses = new HashMap<>();
 
-//    TODO: secure store
     private String token = null;
     private boolean authenticated = false;
 

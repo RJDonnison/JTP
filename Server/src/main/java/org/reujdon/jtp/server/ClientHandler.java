@@ -45,14 +45,13 @@ class ClientHandler implements Runnable {
     private final String clientId;
     private final boolean authenticate;
 
-//    TODO: secure storage
     private final String sessionToken;
     private Permission clientPermission;
 
     private BufferedReader in;
     private PrintWriter out;
 
-//    TODO: separate to file / secure store
+//    TODO: separate to database, to come with 0.3
     private static final Map<String, Permission> KEYS = new HashMap<>();
 
     static {

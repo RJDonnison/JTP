@@ -87,12 +87,12 @@ public class JTPClient implements Runnable, AutoCloseable {
     private static final String ENV_PORT = "CLIENT_PORT";
     private static final String ENV_TRUSTSTORE_PATH = "CLIENT_TRUSTSTORE_PATH";
     private static final String ENV_TRUSTSTORE_PASSWORD = "CLIENT_TRUSTSTORE_PASSWORD";
+    private static final String ENV_API_KEY = "CLIENT_API_KEY";
     private static final String DEFAULT_CONFIG_FILE = "client.properties";
-    //    TODO: Add to env
-    private static final String apiKey = "Test";
 
     private String host;
     private int port = -1;
+    private String apiKey;
     private String truststorePath;
     private String truststorePassword;
 
@@ -165,7 +165,7 @@ public class JTPClient implements Runnable, AutoCloseable {
      * Checks if any required configuration is missing.
      */
     private boolean hasMissingConfig() {
-        return host == null || port == -1 || (truststorePath != null && truststorePassword == null);
+        return host == null || port == -1 || apiKey == null || truststorePath == null || truststorePassword == null;
     }
 
     /**
@@ -173,8 +173,12 @@ public class JTPClient implements Runnable, AutoCloseable {
      */
     private void loadFromEnvVars() {
         String envHost = System.getenv(ENV_HOST);
-        if (envHost != null && !envHost.trim().isEmpty())
+        if (envHost != null && !envHost.isBlank())
             this.host = envHost.trim();
+
+        String envApiKey = System.getenv(ENV_API_KEY);
+        if (envApiKey != null && !envApiKey.isBlank())
+            this.apiKey = envApiKey.trim();
 
         String envPort = System.getenv(ENV_PORT);
         if (envPort != null) {
@@ -207,6 +211,9 @@ public class JTPClient implements Runnable, AutoCloseable {
         if (this.port == -1)
             this.port = PropertiesUtil.getInteger(configFile, "client.port");
 
+        if (this.apiKey == null)
+            this.apiKey = PropertiesUtil.getString(configFile, "client.apiKey");
+
         if (this.truststorePath == null)
             this.truststorePath = PropertiesUtil.getString(configFile, "client.path");
 
@@ -226,6 +233,9 @@ public class JTPClient implements Runnable, AutoCloseable {
 
         if (this.port < 0 || this.port > 65536)
             throw new IllegalArgumentException("PORT must be between 0 and 65536 and set via " + ENV_PORT + " or properties file");
+
+        if (this.apiKey == null || this.apiKey.isBlank())
+            throw new IllegalArgumentException("API key must be set via " + ENV_API_KEY + " or properties file");
 
         if (this.truststorePath == null || this.truststorePath.isBlank())
             logger.warn("Truststore path not set");
@@ -264,9 +274,11 @@ public class JTPClient implements Runnable, AutoCloseable {
             running = true;
 
             Thread.startVirtualThread(() -> {
-                while (running && !responseHandler.isAuthenticated()) {
-                    if (!pendingQueue.isEmpty())
+                while (running) {
+                    if (!pendingQueue.isEmpty() && responseHandler.isAuthenticated()){
                         flushPendingQueue();
+                        break;
+                    }
                 }});
         } catch (Exception e) {
             logger.error("Failed to start client: {}", e.getMessage());

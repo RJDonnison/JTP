@@ -110,6 +110,7 @@ This approach allows you to build your own domain-specific server logic while st
 - [ ] File transfer
 - [ ] Server UI
 - [ ] Custom type transfer
+- [ ] Dynamic API keys 
 
 ---
 

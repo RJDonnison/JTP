@@ -4,6 +4,7 @@ import jdk.jfr.Description;
 import org.junit.jupiter.api.Test;
 import org.reujdon.jtp.server.CommandHandler;
 import org.reujdon.jtp.server.CommandRegistry;
+import org.reujdon.jtp.shared.Permission;
 import org.reujdon.jtp.shared.messaging.Message;
 import org.reujdon.jtp.shared.messaging.messages.Response;
 
@@ -92,12 +93,22 @@ public class CommandRegistryTest {
 @Description("Command for testing")
 class TestCommandHandler implements CommandHandler {
     @Override
+    public Permission requiredPermission() {
+        return null;
+    }
+
+    @Override
     public Response handle(Message msg) {
         return null;
     }
 }
 
 class DescriptionlessCommandHandler implements CommandHandler {
+    @Override
+    public Permission requiredPermission() {
+        return null;
+    }
+
     @Override
     public Response handle(Message msg) {
         return null;

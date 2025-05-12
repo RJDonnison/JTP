@@ -163,7 +163,7 @@ public class JTPServer implements Runnable, AutoCloseable {
      * Checks if any required configuration is missing.
      */
     private boolean hasMissingConfig() {
-        return port == -1 || (keystorePath != null && keystorePassword == null);
+        return port == -1 || keystorePath == null || keystorePassword == null;
     }
 
     /**
