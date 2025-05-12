@@ -43,6 +43,7 @@ class ClientHandler implements Runnable {
     private final JTPServer server;
 
     private final String clientId;
+    private final boolean authenticate;
 
 //    TODO: secure storage
     private final String sessionToken;
@@ -72,7 +73,7 @@ class ClientHandler implements Runnable {
      *     <li>the server is {@code null} or not running</li>
      * </ul>
      */
-    public ClientHandler(SSLSocket socket, JTPServer server) {
+    public ClientHandler(SSLSocket socket, JTPServer server, boolean authenticate) {
         if (socket == null || socket.isClosed())
             throw new IllegalArgumentException("Socket is closed or null");
 
@@ -81,8 +82,13 @@ class ClientHandler implements Runnable {
 
         this.clientSocket = socket;
         this.server = server;
+
         this.clientId = socket.getRemoteSocketAddress().toString();
         this.sessionToken = TokenUtil.generateSessionToken();
+
+        this.authenticate = authenticate;
+        if (!authenticate)
+            clientPermission = Permission.FULL;
     }
 
     /**
@@ -142,7 +148,7 @@ class ClientHandler implements Runnable {
     }
 
     private void handleRequest(Request message, String commandId) {
-        if (!message.containsParam("token") || !message.getParam("token").equals(sessionToken)) {
+        if ((!message.containsParam("token") || !message.getParam("token").equals(sessionToken)) && authenticate) {
             sendError(commandId, "Missing or invalid token");
             return;
         }
@@ -178,11 +184,13 @@ class ClientHandler implements Runnable {
     }
 
     private void handleAuth(Auth auth) {
-        if (KEYS.containsKey(auth.getKey())) {
+        if (KEYS.containsKey(auth.getKey()) && authenticate) {
             auth.setToken(this.sessionToken);
             this.clientPermission = KEYS.get(auth.getKey());
             auth.success();
         }
+        else if (!authenticate)
+            auth.success();
 
         out.println(auth.toJSON());
         out.flush();

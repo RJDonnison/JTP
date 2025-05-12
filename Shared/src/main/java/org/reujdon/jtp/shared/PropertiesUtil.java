@@ -19,6 +19,7 @@ public class PropertiesUtil {
      * @return the string corresponding to the given key, or null if the key is not found or an error occurs
      *
      * @see #getInteger(String, String)
+     * @see #getBoolean(String, String)
      */
     public static String getString(String filename, String property) {
         File file = validateFile(filename, property);
@@ -47,6 +48,7 @@ public class PropertiesUtil {
      * @return the integer corresponding to the given key, or null if the key is not found or an error occurs
      *
      * @see #getString(String, String)
+     * @see #getBoolean(String, String)
      */
     public static Integer getInteger(String filename, String property) {
         File file = validateFile(filename, property);
@@ -64,7 +66,40 @@ public class PropertiesUtil {
         } catch (IOException e) {
             logger.warn("Unable to load properties file: {}", file.getAbsolutePath(), e);
         } catch (NumberFormatException e) {
-            logger.error("Error parsing property: {}", property);
+            logger.error("Error parsing integer property: {}", property);
+        }
+
+        return null;
+    }
+
+
+    /**
+     * Utility method to load a boolean from a .properties file.
+     *
+     * @param filename the name of the properties file
+     * @param property the property whose associated boolean is to be retrieved
+     * @return the boolean corresponding to the given key, or null if the key is not found or an error occurs
+     *
+     * @see #getString(String, String)
+     * @see #getInteger(String, String)
+     */
+    public static Boolean getBoolean(String filename, String property) {
+        File file = validateFile(filename, property);
+
+        Properties properties = new Properties();
+
+        try (FileInputStream fis = new FileInputStream(file)) {
+            properties.load(fis);
+            String prop = properties.getProperty(property);
+
+            if (validateProperty(prop, property, file))
+                return null;
+
+            return Boolean.parseBoolean(prop.trim());
+        } catch (IOException e) {
+            logger.warn("Unable to load properties file: {}", file.getAbsolutePath(), e);
+        } catch (RuntimeException e) {
+            logger.error("Error parsing boolean property: {}", property);
         }
 
         return null;

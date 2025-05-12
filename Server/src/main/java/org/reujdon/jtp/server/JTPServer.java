@@ -83,11 +83,13 @@ public class JTPServer implements Runnable, AutoCloseable {
     private static final String ENV_PORT = "SERVER_PORT";
     private static final String ENV_KEYSTORE_PATH = "SERVER_KEYSTORE_PATH";
     private static final String ENV_KEYSTORE_PASSWORD = "SERVER_KEYSTORE_PASSWORD";
+    private static final String ENV_AUTHENTICATION = "SERVER_AUTHENTICATION";
     private static final String DEFAULT_CONFIG_FILE = "server.properties";
 
     private int port = -1;
     private String keystorePath;
     private String keystorePassword;
+    private Boolean authenticate = null;
 
     private SSLServerSocket serverSocket;
 
@@ -96,7 +98,6 @@ public class JTPServer implements Runnable, AutoCloseable {
 
     private volatile boolean running;
 
-//    TODO: add authentication setting
     /**
      * Constructs a new {@code Server} with default config file.
      * <p>
@@ -162,7 +163,7 @@ public class JTPServer implements Runnable, AutoCloseable {
      * Checks if any required configuration is missing.
      */
     private boolean hasMissingConfig() {
-        return port == -1 || keystorePath == null || keystorePassword == null;
+        return port == -1 || (keystorePath != null && keystorePassword == null);
     }
 
     /**
@@ -177,6 +178,10 @@ public class JTPServer implements Runnable, AutoCloseable {
                 throw new IllegalArgumentException("Invalid PORT in env vars", e);
             }
         }
+
+        String envAuthenticate = System.getenv(ENV_AUTHENTICATION);
+        if (envAuthenticate != null)
+            this.authenticate = Boolean.parseBoolean(envAuthenticate);
 
         String envKeystorePath = System.getenv(ENV_KEYSTORE_PATH);
         if (envKeystorePath != null)
@@ -197,6 +202,9 @@ public class JTPServer implements Runnable, AutoCloseable {
         if (this.port == -1)
             this.port = PropertiesUtil.getInteger(configFile, "server.port");
 
+        if (this.authenticate == null)
+            this.authenticate = PropertiesUtil.getBoolean(configFile, "server.authenticate");
+
         if (this.keystorePath == null)
             this.keystorePath = PropertiesUtil.getString(configFile, "server.path");
 
@@ -213,7 +221,10 @@ public class JTPServer implements Runnable, AutoCloseable {
         if (this.port < 0 || this.port > 65536)
             throw new IllegalArgumentException("PORT must be between 0 and 65536 and set via " + ENV_PORT + " or properties file");
 
-        if (this.keystorePath == null || this.keystorePath.trim().isEmpty())
+        if (this.authenticate == null)
+            this.authenticate = false;
+
+        if (this.keystorePath == null || this.keystorePath.isBlank())
             logger.warn("Keystore path not set");
 
         if (this.keystorePath != null && this.keystorePassword == null)
@@ -319,7 +330,7 @@ public class JTPServer implements Runnable, AutoCloseable {
                 logger.info("New connection attempt from: {}", clientId);
 
                 // Create and register client handler
-                ClientHandler clientHandler = new ClientHandler(clientSocket, this);
+                ClientHandler clientHandler = new ClientHandler(clientSocket, this, authenticate);
                 activeClients.put(clientId, clientHandler);
                 clientThreadPool.execute(clientHandler);
 

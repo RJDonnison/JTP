@@ -89,7 +89,7 @@ public class JTPClient implements Runnable, AutoCloseable {
     private static final String ENV_TRUSTSTORE_PASSWORD = "CLIENT_TRUSTSTORE_PASSWORD";
     private static final String DEFAULT_CONFIG_FILE = "client.properties";
     //    TODO: Add to env
-    private static final String apiKey = "None";
+    private static final String apiKey = "Test";
 
     private String host;
     private int port = -1;
@@ -165,7 +165,7 @@ public class JTPClient implements Runnable, AutoCloseable {
      * Checks if any required configuration is missing.
      */
     private boolean hasMissingConfig() {
-        return host == null || port == -1 || truststorePath == null || truststorePassword == null;
+        return host == null || port == -1 || (truststorePath != null && truststorePassword == null);
     }
 
     /**
@@ -221,13 +221,13 @@ public class JTPClient implements Runnable, AutoCloseable {
      * @throws IllegalArgumentException if any configuration is invalid
      */
     private void validateConfig() {
-        if (this.host == null || this.host.trim().isEmpty())
+        if (this.host == null || this.host.isBlank())
             throw new IllegalArgumentException("Host must be set via " + ENV_HOST + " or properties file");
 
         if (this.port < 0 || this.port > 65536)
             throw new IllegalArgumentException("PORT must be between 0 and 65536 and set via " + ENV_PORT + " or properties file");
 
-        if (this.truststorePath == null || this.truststorePath.trim().isEmpty())
+        if (this.truststorePath == null || this.truststorePath.isBlank())
             logger.warn("Truststore path not set");
 
         if (this.truststorePath != null && this.truststorePassword == null)
@@ -262,6 +262,12 @@ public class JTPClient implements Runnable, AutoCloseable {
             logger.info("Connected to server at {} : {}\n", host, port);
 
             running = true;
+
+            Thread.startVirtualThread(() -> {
+                while (running && !responseHandler.isAuthenticated()) {
+                    if (!pendingQueue.isEmpty())
+                        flushPendingQueue();
+                }});
         } catch (Exception e) {
             logger.error("Failed to start client: {}", e.getMessage());
             close();
@@ -331,12 +337,7 @@ public class JTPClient implements Runnable, AutoCloseable {
             while (running && (message = in.readLine()) != null) {
                 Message deserilaizedMessage = MessageFactory.deserialize(message);
 
-                responseExecutor.submit(() -> {
-                    responseHandler.processResponse(deserilaizedMessage);
-
-                    if (responseHandler.isAuthenticated() && !pendingQueue.isEmpty())
-                        flushPendingQueue();
-                });
+                responseExecutor.submit(() -> responseHandler.processResponse(deserilaizedMessage));
             }
         } catch (IOException e) {
             if (running)
