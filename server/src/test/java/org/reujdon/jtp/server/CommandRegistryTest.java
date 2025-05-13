@@ -1,6 +1,7 @@
 package org.reujdon.jtp.server;
 
 import jdk.jfr.Description;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.reujdon.jtp.server.handlers.HelpCommandHandler;
 import org.reujdon.jtp.shared.Permission;
@@ -12,6 +13,11 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class CommandRegistryTest {
+    @AfterEach
+    void tearDown() {
+        CommandRegistry.clear();
+    }
+
 //    TODO: add final base commands
     @Test
     void testBaseCommandsAdded(){
@@ -41,7 +47,7 @@ public class CommandRegistryTest {
     }
 
     @Test
-    void testRegisterNullArgsThrows(){
+    void testRegisterFalseOverride(){
         CommandHandler handler = new TestCommandHandler();
         CommandRegistry.register("x", handler, false);
         assertEquals(handler, CommandRegistry.getHandler("x"));
@@ -86,6 +92,22 @@ public class CommandRegistryTest {
 
         assertFalse(descriptions.isEmpty());
         assertEquals("Command for testing", descriptions.get("myCommand"));
+    }
+
+    @Test
+    void testClear() {
+        assertNotNull(CommandRegistry.getHandler("Help"));
+
+        CommandRegistry.register("Test", new TestCommandHandler(), true);
+        assertNotNull(CommandRegistry.getHandler("Test"));
+
+        assertNotNull(CommandRegistry.getHandler("Help"));
+        assertNotNull(CommandRegistry.getHandler("Test"));
+
+        CommandRegistry.clear();
+
+        assertNotNull(CommandRegistry.getHandler("Help"));
+        assertNull(CommandRegistry.getHandler("Test"));
     }
 }
 

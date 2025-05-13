@@ -4,7 +4,9 @@ import jdk.jfr.Description;
 import org.reujdon.jtp.server.handlers.HelpCommandHandler;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * A registry for managing command handlers in the transfer protocol.
@@ -15,11 +17,42 @@ import java.util.Map;
  */
 public class CommandRegistry {
     private static final Map<String, CommandHandler> handlers = new HashMap<>();
+    private static final Set<String> STATIC_COMMANDS = new HashSet<>();
 
 //    Base command initialization
     static {
-        handlers.put("Help", new HelpCommandHandler());
+        addStaticCommand("Help", new HelpCommandHandler());
         validateDescriptions();
+    }
+
+    /**
+     * Registers a command as a statically defined command.
+     * <p>
+     * This method adds the given command and its handler to the internal command registry
+     * and marks it as a static (core) command that should not be removed when clearing
+     * dynamically registered commands.
+     * </p>
+     *
+     * @param command the command keyword to register (must be non-null and non-empty)
+     * @param handler the command handler instance to associate with the command (must not be null)
+     * @throws IllegalArgumentException if the command is null, empty, or the handler is null
+     */
+    private static void addStaticCommand(String command, CommandHandler handler) {
+        if (command == null || command.trim().isEmpty())
+            throw new IllegalArgumentException("Command cannot be null or empty");
+
+        if (handler == null)
+            throw new IllegalArgumentException("Handler cannot be null");
+
+        STATIC_COMMANDS.add(command);
+        handlers.put(command, handler);
+    }
+
+    /**
+     * Removes all dynamic (added) commands
+     */
+    public static void clear() {
+        handlers.keySet().removeIf(command -> !STATIC_COMMANDS.contains(command));
     }
 
     /**
