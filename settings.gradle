@@ -1,4 +1,4 @@
-rootProject.name = 'JTP'
-include 'Client'
-include 'Server'
-include 'Shared'
+rootProject.name = 'jtp'
+include 'client'
+include 'server'
+include 'shared'
