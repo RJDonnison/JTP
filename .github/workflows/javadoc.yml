@@ -8,9 +8,6 @@ jobs:
   build:
     if: startsWith(github.ref, 'refs/heads/master') || startsWith(github.ref, 'refs/heads/development-')
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
 
     steps:
       - name: Checkout code
@@ -32,7 +29,7 @@ jobs:
         run: ls -al build/docs/javadoc
 
       - name: Upload Javadoc
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v2
         with:
           name: javadoc
           path: build/docs/javadoc
