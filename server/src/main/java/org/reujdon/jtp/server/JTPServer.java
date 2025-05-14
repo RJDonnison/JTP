@@ -1,6 +1,5 @@
 package org.reujdon.jtp.server;
 
-import org.reujdon.jtp.shared.PropertiesUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,17 +31,7 @@ import java.util.concurrent.TimeUnit;
 public class JTPServer implements Runnable, AutoCloseable {
     private static final Logger logger = LoggerFactory.getLogger(JTPServer.class);
 
-    // Constants for environment variable keys
-    private static final String ENV_PORT = "SERVER_PORT";
-    private static final String ENV_KEYSTORE_PATH = "SERVER_KEYSTORE_PATH";
-    private static final String ENV_KEYSTORE_PASSWORD = "SERVER_KEYSTORE_PASSWORD";
-    private static final String ENV_AUTHENTICATION = "SERVER_AUTHENTICATION";
-    private static final String DEFAULT_CONFIG_FILE = "server.properties";
-
-    private int port = -1;
-    private String keystorePath;
-    private String keystorePassword;
-    private Boolean authenticate = null;
+    private final JTPServerConfig config;
 
     private SSLServerSocket serverSocket;
 
@@ -69,7 +58,8 @@ public class JTPServer implements Runnable, AutoCloseable {
      * @see #JTPServer()
      */
     public JTPServer(String configFile) {
-        loadConfig(configFile);
+        this.config = new JTPServerConfig();
+        config.loadConfig(configFile, "server.properties");
 
         this.running = false;
 
@@ -78,100 +68,6 @@ public class JTPServer implements Runnable, AutoCloseable {
         } catch (Exception e) {
             throw new RuntimeException("Failed to initialize server components", e);
         }
-    }
-
-    /**
-     * Loads configuration from environment variables and properties file.
-     *
-     * @param configFile the path to the properties file (maybe null)
-     * @see #loadFromEnvVars()
-     * @see #loadFromPropertiesFile(String)
-     */
-    private void loadConfig(String configFile){
-        loadFromEnvVars();
-
-        if (hasMissingConfig()) {
-            if (configFile == null)
-                configFile = DEFAULT_CONFIG_FILE;
-
-            loadFromPropertiesFile(configFile);
-        }
-
-        validateConfig();
-    }
-
-    /**
-     * Checks if any required configuration is missing.
-     *
-     * @return true if any required config is missing
-     */
-    private boolean hasMissingConfig() {
-        return port == -1 || keystorePath == null || keystorePassword == null;
-    }
-
-    /**
-     * Loads configuration from environment variables.
-     */
-    private void loadFromEnvVars() {
-        String envPort = System.getenv(ENV_PORT);
-        if (envPort != null) {
-            try {
-                this.port = Integer.parseInt(envPort);
-            } catch (NumberFormatException e) {
-                throw new IllegalArgumentException("Invalid PORT in env vars", e);
-            }
-        }
-
-        String envAuthenticate = System.getenv(ENV_AUTHENTICATION);
-        if (envAuthenticate != null)
-            this.authenticate = Boolean.parseBoolean(envAuthenticate);
-
-        String envKeystorePath = System.getenv(ENV_KEYSTORE_PATH);
-        if (envKeystorePath != null)
-            this.keystorePath = envKeystorePath;
-
-        String envKeystorePassword = System.getenv(ENV_KEYSTORE_PASSWORD);
-        if (envKeystorePassword != null)
-            this.keystorePassword = envKeystorePassword;
-    }
-
-    /**
-     * Loads configuration from properties file.
-     *
-     * @param configFile the path to the properties file
-     * @throws IllegalArgumentException if the file is invalid
-     */
-    private void loadFromPropertiesFile(String configFile) {
-        if (this.port == -1)
-            this.port = PropertiesUtil.getInteger(configFile, "server.port");
-
-        if (this.authenticate == null)
-            this.authenticate = PropertiesUtil.getBoolean(configFile, "server.authenticate");
-
-        if (this.keystorePath == null)
-            this.keystorePath = PropertiesUtil.getString(configFile, "server.path");
-
-        if (this.keystorePassword == null)
-            this.keystorePassword = PropertiesUtil.getString(configFile, "server.password");
-    }
-
-    /**
-     * Validates the loaded configuration.
-     *
-     * @throws IllegalArgumentException if any configuration is invalid
-     */
-    private void validateConfig() {
-        if (this.port < 0 || this.port > 65536)
-            throw new IllegalArgumentException("PORT must be between 0 and 65536 and set via " + ENV_PORT + " or properties file");
-
-        if (this.authenticate == null)
-            this.authenticate = false;
-
-        if (this.keystorePath == null || this.keystorePath.isBlank())
-            logger.warn("Keystore path not set");
-
-        if (this.keystorePath != null && this.keystorePassword == null)
-            throw new IllegalArgumentException("Truststore password must be set via " + ENV_KEYSTORE_PASSWORD + " or properties file");
     }
 
     /**
@@ -188,9 +84,9 @@ public class JTPServer implements Runnable, AutoCloseable {
         try {
             SSLContext sslContext = createSSLContext();
             SSLServerSocketFactory ssf = sslContext.getServerSocketFactory();
-            serverSocket = (SSLServerSocket) ssf.createServerSocket(this.port);
+            serverSocket = (SSLServerSocket) ssf.createServerSocket(config.port);
 
-            logger.info("Server started on port {}", this.port);
+            logger.info("Server started on port {}", config.port);
 
             running = true;
             handleClients();
@@ -210,7 +106,7 @@ public class JTPServer implements Runnable, AutoCloseable {
      */
     private SSLContext createSSLContext() {
         // Validate inputs
-        if (keystorePath == null || keystorePath.trim().isEmpty()) {
+        if (config.keystorePath == null || config.keystorePath.isBlank()) {
             try {
                 // Create a basic SSL context without client authentication
                 SSLContext sslContext = SSLContext.getInstance("TLS");
@@ -222,18 +118,18 @@ public class JTPServer implements Runnable, AutoCloseable {
             }
         }
 
-        File keystoreFile = new File(keystorePath);
+        File keystoreFile = new File(config.keystorePath);
         if (!keystoreFile.exists())
-            throw new IllegalArgumentException("Keystore file not found at: " + keystorePath);
+            throw new IllegalArgumentException("Keystore file not found at: " + config.keystorePath);
 
-        try (FileInputStream fis = new FileInputStream(keystorePath)) {
+        try (FileInputStream fis = new FileInputStream(config.keystorePath)) {
             // Load keystore
             KeyStore keyStore = KeyStore.getInstance("JKS");
-            keyStore.load(fis, keystorePassword.toCharArray());
+            keyStore.load(fis, config.keystorePassword.toCharArray());
 
             // Initialize key manager factory
             KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance("SunX509");
-            keyManagerFactory.init(keyStore, keystorePassword.toCharArray());
+            keyManagerFactory.init(keyStore, config.keystorePassword.toCharArray());
 
             // Initialize trust manager factory
             TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance("SunX509");
@@ -270,7 +166,7 @@ public class JTPServer implements Runnable, AutoCloseable {
                 logger.info("New connection attempt from: {}", clientId);
 
                 // Create and register client handler
-                ClientHandler clientHandler = new ClientHandler(clientSocket, this, authenticate);
+                ClientHandler clientHandler = new ClientHandler(clientSocket, this, config.authenticate);
                 activeClients.put(clientId, clientHandler);
                 clientThreadPool.execute(clientHandler);
 

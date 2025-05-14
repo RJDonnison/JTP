@@ -1,0 +1,141 @@
+package org.reujdon.jtp.server;
+
+import org.reujdon.jtp.shared.ConfigLoader;
+import org.reujdon.jtp.shared.PropertiesUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * Server configuration loader for JTP (JSON Transfer Protocol).
+ *
+ * <p>Handles loading and validation of server configuration from:</p>
+ * <ul>
+ *   <li>Environment variables (highest priority)</li>
+ *   <li>Properties file (fallback)</li>
+ * </ul>
+ *
+ * @author Reuben Donnison
+ * @version 0.2
+ * @see ConfigLoader
+ */
+class JTPServerConfig implements ConfigLoader {
+    private static final Logger logger = LoggerFactory.getLogger(JTPServerConfig.class);
+
+    // Constants for environment variable keys
+    private static final String ENV_PORT = "SERVER_PORT";
+    private static final String ENV_KEYSTORE_PATH = "SERVER_KEYSTORE_PATH";
+    private static final String ENV_KEYSTORE_PASSWORD = "SERVER_KEYSTORE_PASSWORD";
+    private static final String ENV_AUTHENTICATION = "SERVER_AUTHENTICATION";
+    private static final String DEFAULT_CONFIG_FILE = "server.properties";
+
+    /**
+     * Server port (-1 indicates unset)
+     */
+    public int port = -1;
+
+    /**
+     * Path to SSL keystore
+     */
+    public String keystorePath;
+
+    /**
+     * Password for SSL keystore
+     */
+    public String keystorePassword;
+
+    /**
+     * Authentication requirement flag (null indicates unset)
+     */
+    public Boolean authenticate = null;
+
+    /**
+     * Loads configuration from environment variables.
+     *
+     * <p>Reads the following environment variables:</p>
+     * <ul>
+     *   <li>SERVER_PORT - Server port</li>
+     *   <li>SERVER_KEYSTORE_PATH - SSL keystore path</li>
+     *   <li>SERVER_KEYSTORE_PASSWORD - SSL keystore password</li>
+     *   <li>SERVER_AUTHENTICATION - Authentication requirement flag</li>
+     * </ul>
+     *
+     * @throws IllegalArgumentException for invalid numeric values
+     */
+    @Override
+    public void loadFromEnvVars() {
+        String envPort = System.getenv(ENV_PORT);
+        if (envPort != null) {
+            try {
+                port = Integer.parseInt(envPort);
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Invalid PORT in env vars", e);
+            }
+        }
+
+        String envAuthenticate = System.getenv(ENV_AUTHENTICATION);
+        if (envAuthenticate != null)
+            authenticate = Boolean.parseBoolean(envAuthenticate);
+
+        String envKeystorePath = System.getenv(ENV_KEYSTORE_PATH);
+        if (envKeystorePath != null)
+            keystorePath = envKeystorePath;
+
+        String envKeystorePassword = System.getenv(ENV_KEYSTORE_PASSWORD);
+        if (envKeystorePassword != null)
+            keystorePassword = envKeystorePassword;
+    }
+
+    /**
+     * Loads configuration from config properties file.
+     *
+     * <p>Reads the following config variables:</p>
+     * <ul>
+     *   <li>server.port - Server port</li>
+     *   <li>server.path - SSL keystore path</li>
+     *   <li>server.password - SSL keystore password</li>
+     *   <li>server.authenticate - Authentication requirement flag</li>
+     * </ul>
+     *
+     * @throws IllegalArgumentException for invalid numeric values
+     */
+    @Override
+    public void loadFromPropertiesFile(String configFile) {
+        if (port == -1)
+            port = PropertiesUtil.getInteger(configFile, "server.port");
+
+        if (authenticate == null)
+            authenticate = PropertiesUtil.getBoolean(configFile, "server.authenticate");
+
+        if (keystorePath == null)
+            keystorePath = PropertiesUtil.getString(configFile, "server.path");
+
+        if (keystorePassword == null)
+            keystorePassword = PropertiesUtil.getString(configFile, "server.password");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean hasMissingConfig() {
+        return port == -1 || keystorePath == null || keystorePassword == null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void validateConfig() {
+        if (port < 0 || port > 65536)
+            throw new IllegalArgumentException("PORT must be between 0 and 65536 and set via " + ENV_PORT + " or properties file");
+
+        if (authenticate == null)
+            this.authenticate = false;
+
+        if (keystorePath == null || keystorePath.isBlank())
+            logger.warn("Keystore path not set");
+
+        if (keystorePath != null && keystorePassword == null)
+            throw new IllegalArgumentException("Truststore password must be set via " + ENV_KEYSTORE_PASSWORD + " or properties file");
+    }
+}

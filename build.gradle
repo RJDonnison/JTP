@@ -21,8 +21,6 @@ subprojects {
     }
 
     dependencies {
-        implementation("org.reujdon.async:Java-Async:1.0.0")
-
         implementation 'org.slf4j:slf4j-api:2.0.17'
         implementation 'ch.qos.logback:logback-classic:1.4.7'
         implementation 'com.google.code.gson:gson:2.8.8'
@@ -38,19 +36,13 @@ subprojects {
     }
 }
 
-tasks.register('aggregateJavadoc', Javadoc) {
-    description = 'Generates unified Javadoc from all subprojects'
-    group = 'Documentation'
-
-    def allJavaSources = files(subprojects.collect { it.sourceSets.main.allJava })
-    def allClasspaths = files(subprojects.collect { it.sourceSets.main.compileClasspath })
-
-    source.setFrom(allJavaSources)
-    classpath.setFrom(allClasspaths)
-
-    destinationDir = layout.buildDirectory.dir("docs/javadoc").get().asFile
+tasks.register('allJavadoc', Javadoc) {
+    source subprojects.collect { it.sourceSets.main.allJava }
+    classpath = files(subprojects.collect { it.configurations.compileClasspath })
+    destinationDir = file("${projectDir}/javadoc")
+    title = "${project.name} Javadoc"
 }
 
 tasks.named("build") {
-    dependsOn("aggregateJavadoc")
+    dependsOn("allJavadoc")
 }

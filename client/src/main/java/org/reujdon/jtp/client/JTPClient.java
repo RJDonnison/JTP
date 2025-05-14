@@ -1,7 +1,6 @@
 package org.reujdon.jtp.client;
 
 import org.reujdon.jtp.client.commands.Command;
-import org.reujdon.jtp.shared.PropertiesUtil;
 import org.reujdon.jtp.shared.json.JsonException;
 import org.reujdon.jtp.shared.messaging.Message;
 import org.reujdon.jtp.shared.messaging.MessageFactory;
@@ -36,20 +35,7 @@ import java.util.concurrent.TimeUnit;
 public class JTPClient implements Runnable, AutoCloseable {
     private static final Logger logger = LoggerFactory.getLogger(JTPClient.class);
 
-//    TODO: abstract config logic to be reused in server
-    // Constants for environment variable keys
-    private static final String ENV_HOST = "CLIENT_HOST";
-    private static final String ENV_PORT = "CLIENT_PORT";
-    private static final String ENV_TRUSTSTORE_PATH = "CLIENT_TRUSTSTORE_PATH";
-    private static final String ENV_TRUSTSTORE_PASSWORD = "CLIENT_TRUSTSTORE_PASSWORD";
-    private static final String ENV_API_KEY = "CLIENT_API_KEY";
-    private static final String DEFAULT_CONFIG_FILE = "client.properties";
-
-    private String host;
-    private int port = -1;
-    private String apiKey;
-    private String truststorePath;
-    private String truststorePassword;
+    private final JTPClientConfig config;
 
     private SSLSocket sslSocket;
 
@@ -82,112 +68,8 @@ public class JTPClient implements Runnable, AutoCloseable {
      * @see #JTPClient()
      */
     public JTPClient(String configFile) {
-        loadConfig(configFile);
-    }
-
-    /**
-     * Loads configuration from environment and properties file.
-     *
-     * @param configFile path to properties file
-     * @see #loadFromEnvVars()
-     * @see #loadFromPropertiesFile(String)
-     */
-    private void loadConfig(String configFile){
-        loadFromEnvVars();
-
-        if (hasMissingConfig()) {
-            if (configFile == null)
-                configFile = DEFAULT_CONFIG_FILE;
-
-            loadFromPropertiesFile(configFile);
-        }
-
-        validateConfig();
-    }
-
-    /**
-     * Checks for missing required configuration.
-     *
-     * @return true if any required config is missing
-     */
-    private boolean hasMissingConfig() {
-        return host == null || port == -1 || apiKey == null || truststorePath == null || truststorePassword == null;
-    }
-
-    /**
-     * Loads configuration from environment variables.
-     */
-    private void loadFromEnvVars() {
-        String envHost = System.getenv(ENV_HOST);
-        if (envHost != null && !envHost.isBlank())
-            this.host = envHost.trim();
-
-        String envApiKey = System.getenv(ENV_API_KEY);
-        if (envApiKey != null && !envApiKey.isBlank())
-            this.apiKey = envApiKey.trim();
-
-        String envPort = System.getenv(ENV_PORT);
-        if (envPort != null) {
-            try {
-                this.port = Integer.parseInt(envPort);
-            } catch (NumberFormatException e) {
-                throw new IllegalArgumentException("Invalid PORT in env vars", e);
-            }
-        }
-
-        String envTruststorePath = System.getenv(ENV_TRUSTSTORE_PATH);
-        if (envTruststorePath != null)
-            this.truststorePath = envTruststorePath;
-
-        String envTruststorePassword = System.getenv(ENV_TRUSTSTORE_PASSWORD);
-        if (envTruststorePassword != null)
-            this.truststorePassword = envTruststorePassword;
-    }
-
-    /**
-     * Loads configuration from properties file.
-     *
-     * @param configFile path to properties file
-     * @throws IllegalArgumentException if file is invalid
-     */
-    private void loadFromPropertiesFile(String configFile) {
-        if (this.host == null)
-            this.host = PropertiesUtil.getString(configFile, "client.host");
-
-        if (this.port == -1)
-            this.port = PropertiesUtil.getInteger(configFile, "client.port");
-
-        if (this.apiKey == null)
-            this.apiKey = PropertiesUtil.getString(configFile, "client.apiKey");
-
-        if (this.truststorePath == null)
-            this.truststorePath = PropertiesUtil.getString(configFile, "client.path");
-
-        if (this.truststorePassword == null)
-            this.truststorePassword = PropertiesUtil.getString(configFile, "client.password");
-
-    }
-
-    /**
-     * Validates loaded configuration.
-     *
-     * @throws IllegalArgumentException if any config is invalid
-     */
-    private void validateConfig() {
-        if (this.host == null || this.host.isBlank())
-            throw new IllegalArgumentException("Host must be set via " + ENV_HOST + " or properties file");
-
-        if (this.port < 0 || this.port > 65536)
-            throw new IllegalArgumentException("PORT must be between 0 and 65536 and set via " + ENV_PORT + " or properties file");
-
-        if (this.apiKey == null || this.apiKey.isBlank())
-            throw new IllegalArgumentException("API key must be set via " + ENV_API_KEY + " or properties file");
-
-        if (this.truststorePath == null || this.truststorePath.isBlank())
-            logger.warn("Truststore path not set");
-
-        if (this.truststorePath != null && this.truststorePassword == null)
-            throw new IllegalArgumentException("Truststore password must be set via " + ENV_TRUSTSTORE_PASSWORD + " or properties file");
+        this.config = new JTPClientConfig();
+        config.loadConfig(configFile, "client.properties");
     }
 
     /**
@@ -201,14 +83,14 @@ public class JTPClient implements Runnable, AutoCloseable {
         try{
             SSLContext sslContext = createSSLContext();
             SSLSocketFactory sslSocketFactory = sslContext.getSocketFactory();
-            sslSocket = (SSLSocket) sslSocketFactory.createSocket(host, port);
+            sslSocket = (SSLSocket) sslSocketFactory.createSocket(config.host, config.port);
 
             sslSocket.setEnabledCipherSuites(sslSocket.getSupportedCipherSuites());
 
             in = new BufferedReader(new InputStreamReader(sslSocket.getInputStream()));
             out = new PrintWriter(sslSocket.getOutputStream(), true);
 
-            logger.info("Connected to server at {} : {}\n", host, port);
+            logger.info("Connected to server at {} : {}\n", config.host, config.port);
 
             running = true;
 
@@ -238,19 +120,19 @@ public class JTPClient implements Runnable, AutoCloseable {
      */
     private SSLContext createSSLContext() {
         try {
-            if (truststorePath == null || truststorePath.trim().isEmpty()) {
+            if (config.truststorePath == null || config.truststorePath.isBlank()) {
                 logger.warn("No truststore configured - using default SSLContext with standard certificate validation");
                 return SSLContext.getDefault();
             }
 
-            File truststoreFile = new File(truststorePath);
+            File truststoreFile = new File(config.truststorePath);
             if (!truststoreFile.exists())
-                throw new FileNotFoundException("Truststore file not found at: " + truststorePath);
+                throw new FileNotFoundException("Truststore file not found at: " + config.truststorePath);
 
-            try (FileInputStream fis = new FileInputStream(truststorePath)) {
+            try (FileInputStream fis = new FileInputStream(config.truststorePath)) {
                 // Load the truststore
                 KeyStore trustStore = KeyStore.getInstance("JKS");
-                trustStore.load(fis, truststorePassword.toCharArray());
+                trustStore.load(fis, config.truststorePassword.toCharArray());
 
                 // Initialize trust manager factory
                 TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
@@ -273,7 +155,7 @@ public class JTPClient implements Runnable, AutoCloseable {
     private void sendAuth() {
         logger.info("Client authenticating...");
 
-        Auth auth = new Auth(apiKey);
+        Auth auth = new Auth(config.apiKey);
         out.println(auth.toJSON());
         out.flush();
     }
@@ -399,7 +281,7 @@ public class JTPClient implements Runnable, AutoCloseable {
     private void waitForPendingCommands() {
         logger.info("Waiting for pending responses to complete...");
 
-        final int maxWaitMs = 5000;
+        final int maxWaitMs = config.shutdownTimeout;
         final int checkIntervalMs = 100;
         final long endTime = System.currentTimeMillis() + maxWaitMs;
 
