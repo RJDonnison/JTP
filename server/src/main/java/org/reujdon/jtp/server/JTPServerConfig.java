@@ -2,6 +2,10 @@ package org.reujdon.jtp.server;
 
 import org.reujdon.jtp.shared.ConfigLoader;
 import org.reujdon.jtp.shared.PropertiesUtil;
+import org.reujdon.jtp.shared.env.EnvProvider;
+import org.reujdon.jtp.shared.env.SystemEnvProvider;
+import org.reujdon.jtp.shared.parse.ParseError;
+import org.reujdon.jtp.shared.parse.TypeParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,6 +24,7 @@ import org.slf4j.LoggerFactory;
  */
 class JTPServerConfig implements ConfigLoader {
     private static final Logger logger = LoggerFactory.getLogger(JTPServerConfig.class);
+    private final EnvProvider env;
 
     // Constants for environment variable keys
     private static final String ENV_PORT = "SERVER_PORT";
@@ -48,6 +53,14 @@ class JTPServerConfig implements ConfigLoader {
      */
     public Boolean authenticate = null;
 
+    public JTPServerConfig() {
+        this(new SystemEnvProvider()); // default
+    }
+
+    public JTPServerConfig(EnvProvider envProvider) {
+        this.env = envProvider;
+    }
+
     /**
      * Loads configuration from environment variables.
      *
@@ -63,7 +76,7 @@ class JTPServerConfig implements ConfigLoader {
      */
     @Override
     public void loadFromEnvVars() {
-        String envPort = System.getenv(ENV_PORT);
+        String envPort = env.getEnv(ENV_PORT);
         if (envPort != null) {
             try {
                 port = Integer.parseInt(envPort);
@@ -72,15 +85,22 @@ class JTPServerConfig implements ConfigLoader {
             }
         }
 
-        String envAuthenticate = System.getenv(ENV_AUTHENTICATION);
-        if (envAuthenticate != null)
-            authenticate = Boolean.parseBoolean(envAuthenticate);
+        String envAuthenticate = env.getEnv(ENV_AUTHENTICATION);
+        System.out.println(envAuthenticate);
+        if (envAuthenticate != null) {
+            try {
+                authenticate = TypeParser.parseBoolean(envAuthenticate);
+            } catch (ParseError e) {
+                throw new IllegalArgumentException("Invalid AUTHENTICATION in env vars", e);
+            }
+        }
 
-        String envKeystorePath = System.getenv(ENV_KEYSTORE_PATH);
+
+        String envKeystorePath = env.getEnv(ENV_KEYSTORE_PATH);
         if (envKeystorePath != null)
             keystorePath = envKeystorePath;
 
-        String envKeystorePassword = System.getenv(ENV_KEYSTORE_PASSWORD);
+        String envKeystorePassword = env.getEnv(ENV_KEYSTORE_PASSWORD);
         if (envKeystorePassword != null)
             keystorePassword = envKeystorePassword;
     }
@@ -129,8 +149,10 @@ class JTPServerConfig implements ConfigLoader {
         if (port < 0 || port > 65536)
             throw new IllegalArgumentException("PORT must be between 0 and 65536 and set via " + ENV_PORT + " or properties file");
 
-        if (authenticate == null)
-            this.authenticate = false;
+        if (authenticate == null) {
+            logger.warn("Server authenticate not set using default false");
+            authenticate = false;
+        }
 
         if (keystorePath == null || keystorePath.isBlank())
             logger.warn("Keystore path not set");

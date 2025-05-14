@@ -6,6 +6,8 @@ package org.reujdon.jtp.shared.json;
  * This exception can be used to wrap lower-level JSON parsing errors such as {@link com.google.gson.JsonParseException},
  * providing additional context or abstraction from the specific JSON library being used.
  *
+ * @author Reuben Donnison
+ * @version 0.2
  * @see com.google.gson.JsonParseException
  */
 public class JsonException extends RuntimeException {

@@ -2,6 +2,8 @@ package org.reujdon.jtp.client;
 
 import org.reujdon.jtp.shared.ConfigLoader;
 import org.reujdon.jtp.shared.PropertiesUtil;
+import org.reujdon.jtp.shared.env.EnvProvider;
+import org.reujdon.jtp.shared.env.SystemEnvProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,6 +22,7 @@ import org.slf4j.LoggerFactory;
  */
 class JTPClientConfig implements ConfigLoader {
     private static final Logger logger = LoggerFactory.getLogger(JTPClientConfig.class);
+    private final EnvProvider env;
 
     private static final String ENV_HOST = "CLIENT_HOST";
     private static final String ENV_PORT = "CLIENT_PORT";
@@ -59,6 +62,14 @@ class JTPClientConfig implements ConfigLoader {
      */
     public String truststorePassword;
 
+    public JTPClientConfig() {
+        this(new SystemEnvProvider()); // default
+    }
+
+    public JTPClientConfig(EnvProvider envProvider) {
+        this.env = envProvider;
+    }
+
     /**
      * Loads configuration from environment variables.
      *
@@ -76,15 +87,17 @@ class JTPClientConfig implements ConfigLoader {
      */
     @Override
     public void loadFromEnvVars() {
-        String envHost = System.getenv(ENV_HOST);
+        String envHost = env.getEnv(ENV_HOST);
+        System.out.println(envHost);
+        System.out.println(System.getenv(ENV_HOST));
         if (envHost != null && !envHost.isBlank())
             host = envHost.trim();
 
-        String envApiKey = System.getenv(ENV_API_KEY);
+        String envApiKey = env.getEnv(ENV_API_KEY);
         if (envApiKey != null && !envApiKey.isBlank())
             apiKey = envApiKey.trim();
 
-        String envPort = System.getenv(ENV_PORT);
+        String envPort = env.getEnv(ENV_PORT);
         if (envPort != null) {
             try {
                 port = Integer.parseInt(envPort);
@@ -93,7 +106,7 @@ class JTPClientConfig implements ConfigLoader {
             }
         }
 
-        String envTimeout = System.getenv(ENV_SHUTDOWN_TIMEOUT);
+        String envTimeout = env.getEnv(ENV_SHUTDOWN_TIMEOUT);
         if (envTimeout != null) {
             try {
                 shutdownTimeout = Integer.parseInt(envTimeout);
@@ -102,11 +115,11 @@ class JTPClientConfig implements ConfigLoader {
             }
         }
 
-        String envTruststorePath = System.getenv(ENV_TRUSTSTORE_PATH);
+        String envTruststorePath = env.getEnv(ENV_TRUSTSTORE_PATH);
         if (envTruststorePath != null)
             truststorePath = envTruststorePath;
 
-        String envTruststorePassword = System.getenv(ENV_TRUSTSTORE_PASSWORD);
+        String envTruststorePassword = env.getEnv(ENV_TRUSTSTORE_PASSWORD);
         if (envTruststorePassword != null)
             truststorePassword = envTruststorePassword;
     }
