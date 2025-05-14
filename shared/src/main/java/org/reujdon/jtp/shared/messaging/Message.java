@@ -8,7 +8,7 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Abstract base class representing a message in the transfer protocol.
+ * Abstract base class representing a message in jtp.
  *
  * <p>All messages contain:</p>
  * <ul>
@@ -17,14 +17,21 @@ import java.util.UUID;
  *   <li>Optional parameters as key-value pairs</li>
  * </ul>
  *
+ * <p>This class supports adding, removing, and retrieving parameters, serializing
+ * to JSON, and contains utility methods for managing the message's structure.</p>
  *
  * @see MessageType
+ * @author Reuben Donnison
+ * @version 0.2
  */
 //TODO: move away from params
 public class Message {
     private String id;
     private final MessageType type;
 
+    /**
+     * Map containing all message parameters
+     */
     protected final Map<String, Object> params = new HashMap<>();
 
     /**
@@ -41,7 +48,7 @@ public class Message {
     /**
      * Constructs a new Message with the specified ID and type.
      *
-     * @param id The unique identifier for this message
+     * @param id The unique identifier for this message (ID="*" for global message)
      * @param type The type of message
      * @throws IllegalArgumentException if either id is null/empty or type is null
      * @see MessageType
@@ -57,14 +64,33 @@ public class Message {
         this.type = type;
     }
 
+    /**
+     * Gets the message's unique identifier
+     *
+     * @return the message ID (ID="*" for global message)
+     */
     public String getId() {
         return id;
     }
 
+    /**
+     * Sets the message's unique identifier
+     *
+     * @param id the new ID to set (ID="*" for global message)
+     * @throws IllegalArgumentException if ID is null or blank
+     */
     public void setId(String id) {
+        if (id == null || id.isBlank())
+            throw new IllegalArgumentException("Id cannot be null or blank");
+
         this.id = id;
     }
 
+    /**
+     * Gets the message type
+     *
+     * @return the message type
+     */
     public MessageType getType() {
         return type;
     }
@@ -153,42 +179,29 @@ public class Message {
         return params.getOrDefault(key, defaultValue);
     }
 
+    /**
+     * Checks if the message contains a parameter with the specified key.
+     *
+     * @param key the key to check
+     * @return true if the message contains the key, false otherwise
+     */
     public boolean containsParam(String key) {
         return params.containsKey(key);
     }
 
+    /**
+     * Gets all message parameters
+     *
+     * @return map of all parameters
+     */
     public Map<String, Object> getParams() {
         return params;
     }
 
     /**
-     * Converts this message into a JSONObject representation.
+     * Converts this message into a JSON representation.
      *
-     * <p>The returned JSON structure contains the following fields:</p>
-     * <ul>
-     *   <li><b>type</b> - The message type ({@link MessageType})</li>
-     *   <li><b>id</b> - The unique message identifier</li>
-     *   <li><b>params</b> - (Optional) The message parameters as a nested JSONObject,
-     *       only included if parameters exist</li>
-     * </ul>
-     *
-     * @return a JSONObject containing the complete message structure
-     *
-     * @see MessageType
-     *
-     * @Example:
-     * <pre>
-     * {@code
-     * {
-     *      "type": "COMMAND",
-     *      "id": "550e8400-e29b-41d4-a716-446655440000",
-     *      "params": {
-     *          "username": "john_doe",
-     *          "timestamp": 1625097600
-     *      }
-     * }
-     * }
-     * </pre>
+     * @return a JSON string containing the complete message structure
      */
     public String toJSON() {
         return new GsonAdapter().serialize(this);

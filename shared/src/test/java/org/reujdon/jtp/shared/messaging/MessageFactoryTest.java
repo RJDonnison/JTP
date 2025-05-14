@@ -41,7 +41,7 @@ class MessageFactoryTest {
         Message message = MessageFactory.deserialize(json);
 
         assertInstanceOf(Response.class, message);
-        assertEquals(123, message.getParam("responseKey"));
+        assertEquals(123.0, message.getParam("responseKey"));
         assertEquals(MessageType.RESPONSE, message.getType());
     }
 
@@ -54,7 +54,7 @@ class MessageFactoryTest {
         Message message = MessageFactory.deserialize(json);
 
         assertInstanceOf(Error.class, message);
-        assertEquals(123, message.getParam("key"));
+        assertEquals(123.0, message.getParam("key"));
         assertEquals(MessageType.ERROR, message.getType());
     }
 
@@ -67,7 +67,7 @@ class MessageFactoryTest {
         Message message = MessageFactory.deserialize(json);
 
         assertInstanceOf(Auth.class, message);
-        assertEquals(123, message.getParam("key"));
+        assertEquals(123.0, message.getParam("key"));
         assertEquals(MessageType.AUTH, message.getType());
     }
 

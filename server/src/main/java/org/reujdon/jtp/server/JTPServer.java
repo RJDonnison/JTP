@@ -17,63 +17,16 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 /**
- * A secure SSL/TLS server implementation that handles multiple client connections concurrently.
+ * Secure SSL/TLS server implementation for JTP handling concurrent client connections.
  *
- * <p>
- * Configuration can be provided through either:
- * <ul>
- *   <li>Environment variables (highest priority)</li>
- *   <li>Properties file (fallback)</li>
- * </ul>
+ * <p>Configuration can be provided through environment variables or properties file.
+ * See class documentation for full configuration options.</p>
  *
- * <table border="1">
- *   <caption>Configuration Options</caption>
- *   <thead>
- *     <tr>
- *       <th>Description</th>
- *       <th>Environment Variable</th>
- *       <th>Properties Key</th>
- *       <th>Required</th>
- *       <th>Default</th>
- *     </tr>
- *   </thead>
- *   <tbody>
- *     <tr>
- *       <td>Server port</td>
- *       <td>{@code SERVER_PORT}</td>
- *       <td>{@code server.port}</td>
- *       <td>Yes</td>
- *       <td>None</td>
- *     </tr>
- *     <tr>
- *       <td>Path to SSL keystore file</td>
- *       <td>{@code SERVER_KEYSTORE_PATH}</td>
- *       <td>{@code sever.path}</td>
- *       <td>Yes</td>
- *       <td>None</td>
- *     </tr>
- *     <tr>
- *       <td>Password for the keystore</td>
- *       <td>{@code SERVER_KEYSTORE_PASSWORD}</td>
- *       <td>{@code server.password}</td>
- *       <td>Yes</td>
- *       <td>None</td>
- *     </tr>
- *   </tbody>
- * </table>
- * <p>
- * <b>Note:</b> Port values must be between 0-65535.
+ * @author Reuben Donnison
+ * @version 0.2
  *
- * <p>Example usage:</p>
- * <pre>
- * {@code
- * Server server = new Server();
- * server.addCommand("test", params -> new JSONObject().put("status", "success"));
- * server.start();
- * }
- * </pre>
- *
- * @see ClientHandler
+ * @see Runnable
+ * @see AutoCloseable
  * @see SSLServerSocket
  */
 public class JTPServer implements Runnable, AutoCloseable {
@@ -99,35 +52,21 @@ public class JTPServer implements Runnable, AutoCloseable {
     private volatile boolean running;
 
     /**
-     * Constructs a new {@code Server} with default config file.
-     * <p>
-     * Configuration will be loaded from:
-     * <ol>
-     *   <li>Environment variables</li>
-     *   <li>Default config file ({@code server.properties})</li>
-     * </ol>
+     * Constructs server with default configuration file.
      *
-     * @throws IllegalArgumentException if required configuration is missing or invalid
-     *
-     * @see #JTPServer(String) for details on server initialization
+     * @throws IllegalArgumentException if required configuration is missing/invalid
+     * @see #JTPServer(String)
      */
     public JTPServer() {
         this(null);
     }
 
     /**
-     * Constructs a new {@code Server} with configuration from the specified file.
-     * <p>
-     * Configuration will be loaded from:
-     * <ol>
-     *   <li>Environment variables</li>
-     *   <li>Default config file ({@code server.properties})</li>
-     * </ol>
+     * Constructs server with specified configuration file.
      *
-     * @throws IllegalArgumentException if required configuration is missing or invalid
-     * @throws RuntimeException If there's an issue initializing server resources.
-     *
-     * @see #JTPServer(String) for details on server initialization
+     * @param configFile path to configuration file (null for default)
+     * @throws IllegalArgumentException if required configuration is missing/invalid
+     * @see #JTPServer()
      */
     public JTPServer(String configFile) {
         loadConfig(configFile);
@@ -145,6 +84,8 @@ public class JTPServer implements Runnable, AutoCloseable {
      * Loads configuration from environment variables and properties file.
      *
      * @param configFile the path to the properties file (maybe null)
+     * @see #loadFromEnvVars()
+     * @see #loadFromPropertiesFile(String)
      */
     private void loadConfig(String configFile){
         loadFromEnvVars();
@@ -161,6 +102,8 @@ public class JTPServer implements Runnable, AutoCloseable {
 
     /**
      * Checks if any required configuration is missing.
+     *
+     * @return true if any required config is missing
      */
     private boolean hasMissingConfig() {
         return port == -1 || keystorePath == null || keystorePassword == null;
@@ -232,11 +175,9 @@ public class JTPServer implements Runnable, AutoCloseable {
     }
 
     /**
-     * Starts the server and client connection handling.
+     * Starts the server and begins handling client connections.
      *
-     * @throws IllegalStateException If the server is already running
-     * @throws RuntimeException If server fails to start.
-     *
+     * @throws IllegalStateException if server is already running
      * @see #close()
      */
     @Override
@@ -262,9 +203,9 @@ public class JTPServer implements Runnable, AutoCloseable {
     }
 
     /**
-     * Creates an SSLContext, falling back to a basic context if no keystore is present.
+     * Creates SSLContext, falling back to basic context if no keystore.
      *
-     * @return Configured SSLContext
+     * @return configured SSLContext
      * @throws RuntimeException if SSLContext creation fails
      */
     private SSLContext createSSLContext() {
@@ -309,11 +250,10 @@ public class JTPServer implements Runnable, AutoCloseable {
     }
 
     /**
-     * Continuously accepts and handles incoming client connections in a loop while the server is running.
-     * Each connected client is processed in a separate thread from the thread pool.
+     * Accepts and handles incoming client connections.
      *
-     * @throws IOException If a fatal I/O error occurs while accepting connections
-     * @throws IllegalStateException If the server socket is not properly initialized
+     * @throws IOException if fatal I/O error occurs
+     * @throws IllegalStateException if server socket not initialized
      */
     private void handleClients() throws IOException {
         if (serverSocket == null || serverSocket.isClosed())
@@ -349,13 +289,10 @@ public class JTPServer implements Runnable, AutoCloseable {
     }
 
     /**
-     * Removes a client from the active clients registry and logs the disconnection.
+     * Removes client from active clients registry.
      *
-     * @param clientId The unique identifier of the client to remove
-     * @throws IllegalArgumentException If clientId is null or empty
-     *
-     * @see #activeClients
-     * @see ClientHandler
+     * @param clientId unique identifier of client to remove
+     * @throws IllegalArgumentException if clientId is null/empty
      */
     synchronized void removeClient(String clientId) {
         if (clientId == null || clientId.trim().isEmpty())
@@ -367,17 +304,16 @@ public class JTPServer implements Runnable, AutoCloseable {
     }
 
     /**
-     * @return if server is running
+     * Checks if server is currently running.
+     *
+     * @return true if server is running
      */
     public boolean isRunning() {
         return running;
     }
 
     /**
-     * Gracefully shuts down the server.
-     *
-     * @see #activeClients
-     * @see ClientHandler#close()
+     * Gracefully shuts down the server and all client connections.
      */
     @Override
     public void close() {
@@ -395,9 +331,7 @@ public class JTPServer implements Runnable, AutoCloseable {
     }
 
     /**
-     * Closes all active client connections and clears the registry.
-     * Handles each client close operation individually to ensure maximum
-     * connections get closed even if some fail.
+     * Closes all active client connections.
      */
     private void closeAllClients() {
         int clientCount = activeClients.size();
@@ -426,8 +360,7 @@ public class JTPServer implements Runnable, AutoCloseable {
     }
 
     /**
-     * Shuts down the client thread pool with proper timeout handling.
-     * Attempts graceful shutdown first, then forces shutdown if needed.
+     * Shuts down client thread pool with timeout handling.
      */
     private void shutdownThreadPool() {
         if (clientThreadPool == null) {
@@ -456,7 +389,7 @@ public class JTPServer implements Runnable, AutoCloseable {
     }
 
     /**
-     * Closes the server socket with proper error handling.
+     * Closes server socket with error handling.
      */
     private void closeServerSocket() {
         if (serverSocket == null) {
@@ -475,25 +408,25 @@ public class JTPServer implements Runnable, AutoCloseable {
     }
 
     /**
-     * Registers a command with a {@link CommandHandler} implementation.
-     * Will not override existing commands.
+     * Registers a command handler without overriding existing commands.
      *
-     * @param command The command string to register
-     * @param handler The command handler implementation to register
-     * @throws IllegalArgumentException if command is null/empty or handler is null
+     * @param command command string to register
+     * @param handler command handler implementation
+     * @throws IllegalArgumentException for invalid inputs
+     * @see #addCommand(String, CommandHandler, boolean)
      */
     public void addCommand(String command, CommandHandler handler) {
         this.addCommand(command, handler, false);
     }
 
     /**
-     * Registers a command with a {@link CommandHandler} implementation
-     * with option to override existing commands.
+     * Registers a command handler with override option.
      *
-     * @param command The command string to register
-     * @param handler The command handler implementation to register
-     * @param overrideExisting If true, will replace existing command
-     * @throws IllegalArgumentException if command is null/empty or handler is null
+     * @param command command string to register
+     * @param handler command handler implementation
+     * @param overrideExisting true to replace existing command
+     * @throws IllegalArgumentException for invalid inputs
+     * @see #addCommand(String, CommandHandler)
      */
     public void addCommand(String command, CommandHandler handler, boolean overrideExisting) {
         if (command == null || command.trim().isEmpty())
@@ -505,6 +438,21 @@ public class JTPServer implements Runnable, AutoCloseable {
         CommandRegistry.register(command, handler, overrideExisting);
     }
 
+    /**
+     * Entry point for standalone JTP server execution.
+     *
+     * <p>Creates and runs a server instance with default configuration.
+     * Implements graceful shutdown via try-with-resources.</p>
+     *
+     * <p>Example usage:</p>
+     * <pre>{@code
+     * java -jar jtp-server.jar
+     * }</pre>
+     *
+     * @param args command-line arguments (currently unused)
+     * @see JTPServer
+     * @see JTPServer#run()
+     */
     public static void main(String[] args) {
         try (JTPServer server = new JTPServer()) {
             server.run();

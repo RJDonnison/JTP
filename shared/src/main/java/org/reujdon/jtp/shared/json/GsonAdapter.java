@@ -10,23 +10,40 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * A JsonAdapter implementation for Gson.
+ * Gson-based implementation of the JsonAdapter interface.
+ *
+ * <p>Provides JSON operations using Google's Gson library as the backend implementation.</p>
+ *
+ * @author Reuben Donnison
+ * @version 0.2
  */
 public class GsonAdapter implements JsonAdapter {
     private final Gson gson;
     private String jsonString;
     private JsonObject jsonObject;
 
+    /**
+     * Constructs a new GsonAdapter with an empty JSON object.
+     */
     public GsonAdapter() {
         this.gson = new Gson();
         setJsonString("{}");
     }
 
+    /**
+     * Constructs a new GsonAdapter with the specified JSON string.
+     *
+     * @param jsonString The JSON string to parse and manage
+     * @throws JsonException if the JSON string is invalid
+     */
     public GsonAdapter(String jsonString) throws JsonException {
         this();
         setJsonString(jsonString);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String getString(String key) {
         try {
@@ -39,6 +56,9 @@ public class GsonAdapter implements JsonAdapter {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Integer getInt(String key) {
         try {
@@ -49,6 +69,9 @@ public class GsonAdapter implements JsonAdapter {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Long getLong(String key) {
         try {
@@ -59,6 +82,9 @@ public class GsonAdapter implements JsonAdapter {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Double getDouble(String key) {
         try {
@@ -69,6 +95,9 @@ public class GsonAdapter implements JsonAdapter {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Boolean getBoolean(String key) {
         try {
@@ -79,6 +108,9 @@ public class GsonAdapter implements JsonAdapter {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Map<String, Object> getMap(String key) {
         try {
@@ -93,6 +125,9 @@ public class GsonAdapter implements JsonAdapter {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public <T> T get(String key, Class<T> clazz) {
         try {
@@ -103,11 +138,17 @@ public class GsonAdapter implements JsonAdapter {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Object get(String key) {
         return get(key, Object.class);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean has(String key) {
         try {
@@ -117,6 +158,9 @@ public class GsonAdapter implements JsonAdapter {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Set<String> keySet() {
         try {
@@ -126,6 +170,9 @@ public class GsonAdapter implements JsonAdapter {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Map<String, Object> asMap() {
         try {
@@ -136,6 +183,9 @@ public class GsonAdapter implements JsonAdapter {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public <E extends Enum<E>> E getEnum(String key, Class<E> enumClass) {
         try {
@@ -150,6 +200,9 @@ public class GsonAdapter implements JsonAdapter {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public <T> T deserialize(String json, Class<T> clazz) throws JsonException {
         try {
@@ -159,6 +212,9 @@ public class GsonAdapter implements JsonAdapter {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public <T> T deserialize(String json, Type typeOfT) throws JsonException {
         try {
@@ -168,16 +224,25 @@ public class GsonAdapter implements JsonAdapter {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String serialize(Object obj) {
         return gson.toJson(obj);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String getRawJson() {
         return jsonString;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public JsonElement getJsonElement() {
         try {
@@ -187,6 +252,9 @@ public class GsonAdapter implements JsonAdapter {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void setJsonString(String jsonString) throws JsonException {
         this.jsonString = jsonString;
@@ -200,6 +268,9 @@ public class GsonAdapter implements JsonAdapter {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void put(String key, Object value) {
         try {

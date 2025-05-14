@@ -9,10 +9,13 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * A registry for managing command handlers in the transfer protocol.
- * This class maintains a mapping between command strings and their corresponding
- * {@link CommandHandler} implementations.
+ * Registry for managing command handlers in JTP.
  *
+ * <p>Maintains a mapping between command strings and their corresponding
+ * {@link CommandHandler} implementations, including both static and dynamic commands.</p>
+ *
+ * @author Reuben Donnison
+ * @version 0.2
  * @see CommandHandler
  */
 public class CommandRegistry {
@@ -49,15 +52,14 @@ public class CommandRegistry {
     }
 
     /**
-     * Removes all dynamic (added) commands
+     * Removes all dynamically registered commands while preserving static commands.
      */
     public static void clear() {
         handlers.keySet().removeIf(command -> !STATIC_COMMANDS.contains(command));
     }
 
     /**
-     * Retrieves the command handler for the specified command.
-     * If no handler is found for the command, returns null.
+     * Gets the command handler for the specified command.
      *
      * @param command the command to look up
      * @return the registered CommandHandler, or null if not found
@@ -76,10 +78,10 @@ public class CommandRegistry {
     }
 
     /**
-     * Gets the description of a specific command based on the {@link Description} annotation.
+     * Gets the description of a specific command.
      *
      * @param command the command to describe
-     * @return the description or an empty string if not found or missing
+     * @return the description or empty string if not found/missing
      * @throws IllegalArgumentException if command is null or empty
      */
     public static String getDescription(String command) {
@@ -93,9 +95,9 @@ public class CommandRegistry {
     }
 
     /**
-     * Gets the descriptions of all registered commands.
+     * Gets descriptions for all registered commands.
      *
-     * @return map of command -> description
+     * @return map of command names to their descriptions
      */
     public static Map<String, String> getDescriptions() {
         Map<String, String> descriptions = new HashMap<>();
@@ -108,22 +110,10 @@ public class CommandRegistry {
     /**
      * Registers a new command handler or replaces an existing one.
      *
-     * <p>Command registration follows these rules:</p>
-     * <ul>
-     *   <li>Commands are stored in lowercase for case-insensitive matching</li>
-     *   <li>Existing commands can only be overwritten if override=true</li>
-     *   <li>Null/empty commands or null handlers are rejected</li>
-     * </ul>
-     *
      * @param command the command to register
-     * @param handler the handler to execute for this command
+     * @param handler the handler to execute
      * @param override if true, allows overwriting existing commands
-     * @throws IllegalArgumentException if:
-     *         <ul>
-     *           <li>command is null or empty</li>
-     *           <li>handler is null</li>
-     *           <li>command exists and override=false</li>
-     *         </ul>
+     * @throws IllegalArgumentException for invalid inputs or existing commands when override=false
      * @throws RuntimeException if handler is missing @Description
      */
     public static void register(String command, CommandHandler handler, boolean override) {

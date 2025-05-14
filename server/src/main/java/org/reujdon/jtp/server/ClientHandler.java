@@ -21,20 +21,20 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Handles communication with a connected client over a secure SSL socket.
- * <p>
- * This class is responsible for:
+ * Handles communication with a connected client over secure SSL socket in JTP.
+ *
+ * <p>Responsibilities include:</p>
  * <ul>
- *     <li>Reading and parsing incoming JSON messages from the client</li>
- *     <li>Dispatching commands to the appropriate {@link CommandHandler}</li>
- *     <li>Sending back responses or errors based on execution results</li>
- *     <li>Cleaning up resources when the client disconnects</li>
+ *   <li>Reading and parsing incoming JSON messages</li>
+ *   <li>Dispatching commands to appropriate {@link CommandHandler}</li>
+ *   <li>Sending responses or errors</li>
+ *   <li>Cleaning up resources on disconnect</li>
  * </ul>
  *
- * Instances of this class are typically managed by the {@link JTPServer} and
- * executed on separate threads to allow concurrent client handling.
- *
+ * @author Reuben Donnison
+ * @version 0.2
  * @see Runnable
+ * @see JTPServer
  */
 class ClientHandler implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(ClientHandler.class);
@@ -62,15 +62,12 @@ class ClientHandler implements Runnable {
     }
 
     /**
-     * Constructs a new {@code ClientHandler} with the specified SSL socket and server.
+     * Constructs a new client handler with SSL socket and server reference.
      *
-     * @param socket the {@link SSLSocket} representing the client's connection
-     * @param server the {@link JTPServer} instance that this client is connecting to
-     * @throws IllegalArgumentException if:
-     * <ul>
-     *     <li>the socket is {@code null} or closed</li>
-     *     <li>the server is {@code null} or not running</li>
-     * </ul>
+     * @param socket the client's SSL socket connection
+     * @param server the managing server instance
+     * @param authenticate whether to enforce authentication
+     * @throws IllegalArgumentException if socket/server invalid
      */
     public ClientHandler(SSLSocket socket, JTPServer server, boolean authenticate) {
         if (socket == null || socket.isClosed())
@@ -91,7 +88,9 @@ class ClientHandler implements Runnable {
     }
 
     /**
-     * Starts handling communication with the connected client.
+     * Starts handling client communication in dedicated thread.
+     *
+     * @see #close()
      */
     @Override
     public void run() {
@@ -118,9 +117,10 @@ class ClientHandler implements Runnable {
     }
 
     /**
-     * Handles an incoming message from the client.
+     * Processes incoming message from client.
      *
-     * @throws NullPointerException if the {@link Message} is {@code null}
+     * @param message the deserialized message
+     * @throws NullPointerException if message is null
      */
     private void handleMessage(Message message) {
         if (message == null)
@@ -146,6 +146,12 @@ class ClientHandler implements Runnable {
         }
     }
 
+    /**
+     * Handles client request message.
+     *
+     * @param message the request message
+     * @param commandId the command identifier
+     */
     private void handleRequest(Request message, String commandId) {
         if ((!message.containsParam("token") || !message.getParam("token").equals(sessionToken)) && authenticate) {
             sendError(commandId, "Missing or invalid token");
@@ -182,6 +188,11 @@ class ClientHandler implements Runnable {
         }
     }
 
+    /**
+     * Handles client authentication.
+     *
+     * @param auth the authentication message
+     */
     private void handleAuth(Auth auth) {
         if (KEYS.containsKey(auth.getKey()) && authenticate) {
             auth.setToken(this.sessionToken);
@@ -196,10 +207,10 @@ class ClientHandler implements Runnable {
     }
 
     /**
-     * Sends a successful response to the client.
+     * Sends successful response to client.
      *
-     * @param commandID the id of the command this response is related to
-     * @param response  the {@link Response} containing the response data
+     * @param commandID the related command ID
+     * @param response the response data
      */
     private void sendResponse(String commandID, Response response) {
         response.setId(commandID);
@@ -208,12 +219,10 @@ class ClientHandler implements Runnable {
     }
 
     /**
-     * Sends an error response to the client.
-     * <p>
-     * Constructs an {@link Error} object with the given request ID and error message.
+     * Sends error response to client.
      *
-     * @param id      the id of the request that caused the error
-     * @param message a description of the error
+     * @param id the request ID causing error
+     * @param message error description
      */
     private void sendError(String id, String message) {
         logger.error("Error with client: {}, request: {} | {}", clientId, id, message);
@@ -221,11 +230,9 @@ class ClientHandler implements Runnable {
     }
 
     /**
-     * Closes the connection to the client and performs cleanup.
-     * <p>
-     * This method shuts down the input and output streams, closes the client socket,
-     * and notifies the server to remove the client from its active list.
-     * Any {@link IOException} encountered during cleanup is logged to standard error.
+     * Closes client connection and performs cleanup.
+     *
+     * @see #run()
      */
     public void close() {
         try {

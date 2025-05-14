@@ -1,13 +1,10 @@
 package org.reujdon.jtp.shared.messaging.messages;
 
-import org.reujdon.jtp.shared.json.JsonAdapter;
 import org.reujdon.jtp.shared.messaging.Message;
 import org.reujdon.jtp.shared.messaging.MessageType;
 
-import java.util.Map;
-
 /**
- * Represents a response message in the transfer protocol.
+ * Represents a response message in JTP.
  *
  * <p>Response messages are used to return data from successful command executions.
  * They contain:</p>
@@ -17,21 +14,8 @@ import java.util.Map;
  *   <li>An identifier matching the original request</li>
  * </ul>
  *
- <p>Example JSON representation:</p>
- * <pre>
- * {@code
- * {
- *   "type": "RESPONSE",
- *   "id": "550e8400-e29b-41d4-a716-446655440000",
- *   "params": {
- *     "username": "john_doe",
- *     "email": "john@example.com",
- *     "status": "active"
- *   }
- * }
- * }
- * </pre>
- *
+ * @author Reuben Donnison
+ * @version 0.2
  * @see Message
  * @see MessageType#RESPONSE
  */
@@ -53,51 +37,5 @@ public class Response extends Message {
         super(id, MessageType.RESPONSE);
     }
 
-    /**
-     * Constructs a Response message with the specified ID and initial data.
-     *
-     * @param id The response identifier (should match the original request ID)
-     * @param data Initial response data as a JSONObject (can be null)
-     * @throws IllegalArgumentException if id is null or empty
-     */
-    public Response(String id, JsonAdapter data){
-        this(id);
 
-        this.addParams(data);
-    }
-
-    /**
-     * Constructs a Response message with the specified initial data.
-     *
-     * @param data Initial response data as a JSONObject (can be null)
-     */
-    public Response(JsonAdapter data){
-        super(MessageType.RESPONSE);
-
-        this.addParams(data);
-    }
-
-    /**
-     * Constructs a Response message with the specified ID and initial data.
-     *
-     * @param id The response identifier (should match the original request ID)
-     * @param data Initial response data as a {@code Map<String, Object>} (can be null)
-     * @throws IllegalArgumentException if id is null or empty
-     */
-    public Response(String id, Map<String, ?> data){
-        this(id);
-
-        this.addParams(data);
-    }
-
-    /**
-     * Constructs a Response message with the specified initial data.
-     *
-     * @param data Initial response data as a {@code Map<String, Object>} (can be null)
-     */
-    public Response(Map<String, ?> data){
-        super(MessageType.RESPONSE);
-
-        this.addParams(data);
-    }
 }

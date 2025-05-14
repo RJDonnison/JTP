@@ -8,6 +8,15 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Properties;
 
+/**
+ * Utility class for retrieving values from `.properties` files.
+ *
+ * <p>Supports loading of string, integer, and boolean values with validation and logging.
+ * Designed to simplify reading configuration data from properties files with error handling.
+ *
+ * @author Reuben Donnison
+ * @version 0.2
+ */
 public class PropertiesUtil {
     private static final Logger logger = LoggerFactory.getLogger(PropertiesUtil.class);
 

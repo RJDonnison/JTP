@@ -4,7 +4,7 @@ import org.reujdon.jtp.shared.messaging.Message;
 import org.reujdon.jtp.shared.messaging.MessageType;
 
 /**
- * Abstract base class representing a request message in the transfer protocol.
+ * Abstract base class representing a request message in JTP.
  *
  * <p>Request messages are used to execute commands on the server and handle their responses.
  * They support:</p>
@@ -15,26 +15,17 @@ import org.reujdon.jtp.shared.messaging.MessageType;
  *   <li>Response handling through callbacks</li>
  * </ul>
  *
+ * @author Reuben Donnison
+ * @version 0.2
  * @see Message
  * @see MessageType#REQUEST
  */
 public class Request extends Message {
     /**
-     * Constructs a new Request message with command, authentication token, and timeout.
-     *
-     * <p>The request will automatically include these parameters:</p>
-     * <ul>
-     *   <li><b>command</b> - The command to execute (required)</li>
-     *   <li><b>token</b> - The authentication token (optional)</li>
-     * </ul>
+     * Constructs a new Request message with command.
      *
      * @param command The command string to execute
-     * @throws IllegalArgumentException if:
-     *         <ul>
-     *           <li>command is null or blank</li>
-     *         </ul>
-     *
-     * @see MessageType#REQUEST
+     * @throws IllegalArgumentException if command is null or blank
      */
     public Request(String command) {
         super(MessageType.REQUEST);
@@ -45,6 +36,11 @@ public class Request extends Message {
         addParam("command", command);
     }
 
+    /**
+     * Gets the authentication token for this request.
+     *
+     * @return the authentication token, or null if not set
+     */
     public String getToken() {
         try {
             return getParam("token").toString();
@@ -53,6 +49,12 @@ public class Request extends Message {
         }
     }
 
+
+    /**
+     * Sets the authentication token for this request.
+     *
+     * @param token The authentication token to set (can be null)
+     */
     public void setToken(String token) {
         if (token != null)
             addParam("token", token.trim());

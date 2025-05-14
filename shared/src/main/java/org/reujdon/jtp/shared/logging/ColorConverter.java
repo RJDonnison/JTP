@@ -7,6 +7,15 @@ import ch.qos.logback.core.pattern.color.ForegroundCompositeConverterBase;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Provides ANSI color conversion for log messages.
+ *
+ * <p>This converter maps color names to ANSI escape codes for log output formatting.
+ * Supported colors include standard terminal colors and additional formats like bold.</p>
+ *
+ * @author Reuben Donnison
+ * @version 0.2
+ */
 public class ColorConverter extends ForegroundCompositeConverterBase<ILoggingEvent> {
     // Define color codes
     private static final Map<String, String> COLORS = new HashMap<>();
@@ -23,6 +32,12 @@ public class ColorConverter extends ForegroundCompositeConverterBase<ILoggingEve
         COLORS.put("BOLD", ANSIConstants.BOLD);
     }
 
+    /**
+     * Gets the ANSI color code for the configured color option.
+     *
+     * @param event The logging event being processed
+     * @return ANSI color code string, or default if color not found
+     */
     @Override
     protected String getForegroundColorCode(ILoggingEvent event) {
         String color = getFirstOption();

@@ -4,29 +4,18 @@ import org.reujdon.jtp.shared.messaging.Message;
 import org.reujdon.jtp.shared.messaging.MessageType;
 
 /**
- * Represents an error message in the transfer protocol.
+ * Represents an error message in JTP.
  *
- * <p>Error messages are used to communicate problems or exceptional conditions
- * that occurred during request processing. All error messages contain:</p>
+ * <p>Error messages communicate problems or exceptional conditions that occurred
+ * during request processing. All error messages contain:</p>
  * <ul>
  *   <li>A message type of {@link MessageType#ERROR}</li>
  *   <li>An error description in the "message" parameter</li>
  *   <li>An automatically generated message ID (unless specified)</li>
  * </ul>
  *
- * <p>Example JSON representation:</p>
- * <pre>
- * {@code
- * {
- *   "type": "ERROR",
- *   "id": "123e4567-e89b-12d3-a456-426614174000",
- *   "params": {
- *     "message": "Invalid authentication token"
- *   }
- * }
- * }
- * </pre>
- *
+ * @author Reuben Donnison
+ * @version 0.2
  * @see Message
  * @see MessageType#ERROR
  */
@@ -34,9 +23,10 @@ public class Error extends Message {
     /**
      * Constructs an Error message with a specific ID and error message.
      *
-     * @param id The unique identifier for this error message
+     * @param id The unique identifier for this error message (ID="*" for global error)
      * @param message The descriptive error message
      * @throws IllegalArgumentException if either id or message is null/empty
+     * @see #Error(String)
      */
     public Error(String id, String message) {
         super(id, MessageType.ERROR);
@@ -48,7 +38,7 @@ public class Error extends Message {
     }
 
     /**
-     * Constructs an Error message with given message.
+     * Constructs an Error message with given message and auto-generated ID.
      *
      * @param message The descriptive error message
      * @throws IllegalArgumentException if message is null/empty

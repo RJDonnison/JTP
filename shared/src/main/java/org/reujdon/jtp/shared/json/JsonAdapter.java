@@ -7,8 +7,13 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * An abstraction over JSON operations, allowing consistent access and manipulation
- * of JSON data regardless of the underlying library.
+ * Abstraction layer for JSON operations providing consistent access across implementations.
+ *
+ * <p>This interface defines standard methods for reading, writing, and converting JSON data
+ * regardless of the underlying JSON processing library.</p>
+ *
+ * @author Reuben Donnison
+ * @version 0.2
  */
 public interface JsonAdapter {
     /**
@@ -62,11 +67,15 @@ public interface JsonAdapter {
     Map<String, Object> getMap(String key);
 
     /**
-     * Deserializes the value associated with the key into the given class type.
+     * Deserializes JSON value into specified Java type.
      *
-     * @param key   the key to look up
-     * @param clazz the class to deserialize into
-     * @return the deserialized object, or null if the key is missing
+     * <p>Converts the JSON value associated with the given key into an instance
+     * of the requested class type.</p>
+     *
+     * @param <T> the target object type
+     * @param key the JSON key to deserialize (required)
+     * @param clazz the target class type (required)
+     * @return deserialized object or null if key not found
      */
     <T> T get(String key, Class<T> clazz);
 

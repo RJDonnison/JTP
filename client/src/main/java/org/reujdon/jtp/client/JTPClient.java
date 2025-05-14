@@ -1,16 +1,13 @@
 package org.reujdon.jtp.client;
 
 import org.reujdon.jtp.client.commands.Command;
-import org.reujdon.jtp.client.commands.HelpCommand;
 import org.reujdon.jtp.shared.PropertiesUtil;
 import org.reujdon.jtp.shared.json.JsonException;
 import org.reujdon.jtp.shared.messaging.Message;
 import org.reujdon.jtp.shared.messaging.MessageFactory;
 import org.reujdon.jtp.shared.messaging.messages.Auth;
-import org.reujdon.jtp.shared.messaging.messages.Request;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reujdon.async.Async;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocket;
@@ -26,58 +23,15 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 /**
- * A secure client that connects to a server over SSL/TLS.
- * <p>
- * Configuration can be provided through either:
- * <ul>
- *   <li>Environment variables (highest priority)</li>
- *   <li>Properties file (fallback)</li>
- * </ul>
+ * Secure SSL/TLS client implementation for JTP communication.
  *
- * <table border="1">
- *   <caption>Configuration Options</caption>
- *   <thead>
- *     <tr>
- *       <th>Description</th>
- *       <th>Environment Variable</th>
- *       <th>Properties Key</th>
- *       <th>Required</th>
- *       <th>Default</th>
- *     </tr>
- *   </thead>
- *   <tbody>
- *     <tr>
- *       <td>Server hostname or IP address</td>
- *       <td>{@code CLIENT_HOST}</td>
- *       <td>{@code client.host}</td>
- *       <td>Yes</td>
- *       <td>None</td>
- *     </tr>
- *     <tr>
- *       <td>Server port</td>
- *       <td>{@code CLIENT_PORT}</td>
- *       <td>{@code client.port}</td>
- *       <td>Yes</td>
- *       <td>None</td>
- *     </tr>
- *     <tr>
- *       <td>Path to SSL truststore file</td>
- *       <td>{@code CLIENT_TRUSTSTORE_PATH}</td>
- *       <td>{@code client.path}</td>
- *       <td>Yes</td>
- *       <td>None</td>
- *     </tr>
- *     <tr>
- *       <td>Password for the truststore</td>
- *       <td>{@code CLIENT_TRUSTSTORE_PASSWORD}</td>
- *       <td>{@code client.password}</td>
- *       <td>Yes</td>
- *       <td>None</td>
- *     </tr>
- *   </tbody>
- * </table>
- * <p>
- * <b>Note:</b> Port values must be between 0-65535.
+ * <p>Handles connection to server and command execution with response handling.
+ * Configuration can be provided through environment variables or properties file.</p>
+ *
+ * @author Reuben Donnison
+ * @version 0.2
+ * @see Runnable
+ * @see AutoCloseable
  */
 public class JTPClient implements Runnable, AutoCloseable {
     private static final Logger logger = LoggerFactory.getLogger(JTPClient.class);
@@ -90,6 +44,7 @@ public class JTPClient implements Runnable, AutoCloseable {
     private static final String ENV_API_KEY = "CLIENT_API_KEY";
     private static final String DEFAULT_CONFIG_FILE = "client.properties";
 
+//    TODO: simplify connection to env vars
     private String host;
     private int port = -1;
     private String apiKey;
@@ -111,31 +66,19 @@ public class JTPClient implements Runnable, AutoCloseable {
     private final Queue<Command> pendingQueue = new ConcurrentLinkedQueue<>();
 
     /**
-     * Constructs a new {@code Client} with default config file.
-     * <p>
-     * Configuration will be loaded from:
-     * <ol>
-     *   <li>Environment variables</li>
-     *   <li>Default config file ({@code client.properties})</li>
-     * </ol>
+     * Constructs client with default configuration file.
      *
-     * @throws IllegalArgumentException if required configuration is missing or invalid
-     *
+     * @throws IllegalArgumentException if required configuration is missing/invalid
      * @see #JTPClient(String)
      */
     public JTPClient(){ this(null); }
 
     /**
-     * Constructs a new {@code Client} with configuration from the specified file.
-     * <p>
-     * Configuration will be loaded from:
-     * <ol>
-     *   <li>Environment variables</li>
-     *   <li>The specified config file</li>
-     * </ol>
+     * Constructs client with specified configuration file.
      *
-     * @param configFile the path to the configuration file (maybe null)
-     * @throws IllegalArgumentException if required configuration is missing or invalid
+     * @param configFile path to configuration file (null for default)
+     * @throws IllegalArgumentException if required configuration is missing/invalid
+     * @see #JTPClient()
      */
     public JTPClient(String configFile) {
         loadConfig(configFile);
@@ -144,9 +87,11 @@ public class JTPClient implements Runnable, AutoCloseable {
     }
 
     /**
-     * Loads configuration from environment variables and properties file.
+     * Loads configuration from environment and properties file.
      *
-     * @param configFile the path to the properties file (maybe null)
+     * @param configFile path to properties file
+     * @see #loadFromEnvVars()
+     * @see #loadFromPropertiesFile(String)
      */
     private void loadConfig(String configFile){
         loadFromEnvVars();
@@ -162,7 +107,9 @@ public class JTPClient implements Runnable, AutoCloseable {
     }
 
     /**
-     * Checks if any required configuration is missing.
+     * Checks for missing required configuration.
+     *
+     * @return true if any required config is missing
      */
     private boolean hasMissingConfig() {
         return host == null || port == -1 || apiKey == null || truststorePath == null || truststorePassword == null;
@@ -201,8 +148,8 @@ public class JTPClient implements Runnable, AutoCloseable {
     /**
      * Loads configuration from properties file.
      *
-     * @param configFile the path to the properties file
-     * @throws IllegalArgumentException if the file is invalid
+     * @param configFile path to properties file
+     * @throws IllegalArgumentException if file is invalid
      */
     private void loadFromPropertiesFile(String configFile) {
         if (this.host == null)
@@ -223,9 +170,9 @@ public class JTPClient implements Runnable, AutoCloseable {
     }
 
     /**
-     * Validates the loaded configuration.
+     * Validates loaded configuration.
      *
-     * @throws IllegalArgumentException if any configuration is invalid
+     * @throws IllegalArgumentException if any config is invalid
      */
     private void validateConfig() {
         if (this.host == null || this.host.isBlank())
@@ -245,17 +192,10 @@ public class JTPClient implements Runnable, AutoCloseable {
     }
 
     /**
-     * Initializes the SSL connection to the server and sets up input/output streams.
-     * <p>
-     * This method creates an {@link SSLContext}, connects to the server at the specified
-     * {@code HOST} and {@code PORT}, and opens buffered streams for communication.
-     * It also starts a new thread to handle incoming responses asynchronously.
+     * Initializes SSL connection and starts client operations.
      *
-     * @throws RuntimeException if:
-     * <ul>
-     *     <li>an exception occurs during initialization</li>
-     *     <li>inability to create the SSL context or connect to the server</li>
-     * </ul>
+     * @throws RuntimeException if initialization fails
+     * @see #close()
      */
     @Override
     public void run() {
@@ -294,10 +234,9 @@ public class JTPClient implements Runnable, AutoCloseable {
     }
 
     /**
-     * Creates and initializes an SSLContext for secure communication.
-     * If no truststore is provided, creates a default SSLContext that performs basic certificate validation.
+     * Creates SSLContext for secure communication.
      *
-     * @return Initialized SSLContext ready for use in secure communications
+     * @return initialized SSLContext
      * @throws RuntimeException if SSL context cannot be created
      */
     private SSLContext createSSLContext() {
@@ -331,6 +270,9 @@ public class JTPClient implements Runnable, AutoCloseable {
         }
     }
 
+    /**
+     * Sends authentication message to server.
+     */
     private void sendAuth() {
         logger.info("Client authenticating...");
 
@@ -340,7 +282,7 @@ public class JTPClient implements Runnable, AutoCloseable {
     }
 
     /**
-     * Listens for and processes pending responses from the server.
+     * Listens for and processes server responses.
      */
     private void handleResponses() {
         String message;
@@ -364,12 +306,15 @@ public class JTPClient implements Runnable, AutoCloseable {
     }
 
     /**
-     * Sends a command to the server and stores the associated request for later response handling.
+     * Sends command to server for execution.
      *
-     * @param command the {@link Request} object containing the command to be sent
-     * @throws IllegalArgumentException if the request is {@code null} or request id is {@code null}
+     * @param command the command to send
+     * @throws IllegalArgumentException if command is invalid
      */
     public void sendCommand(Command command) {
+        if (!running)
+            throw new IllegalStateException("Client is not running");
+
         if (command == null)
             throw new IllegalArgumentException("Command cannot be null");
 
@@ -386,6 +331,9 @@ public class JTPClient implements Runnable, AutoCloseable {
         sendCommandNow(command);
     }
 
+    /**
+     * Sends queued commands after authentication.
+     */
     private void flushPendingQueue() {
         Command command;
         while ((command = pendingQueue.poll()) != null) {
@@ -394,6 +342,11 @@ public class JTPClient implements Runnable, AutoCloseable {
         }
     }
 
+    /**
+     * Immediately sends command to server.
+     *
+     * @param command the command to send
+     */
     private void sendCommandNow(Command command) {
         command.setToken(responseHandler.getToken());
 
@@ -408,13 +361,17 @@ public class JTPClient implements Runnable, AutoCloseable {
     }
 
     /**
-     * Closes the client connection and associated resources.
+     * Gracefully closes client connection and resources.
+     *
+     * @see #run()
      */
     @Override
     public void close() {
         logger.info("Closing connection...");
 
         running = false;
+
+//      TODO: wait for all commands to be processed from pending responses and the pendingQueue
 
         shutdownResponseExecutor();
         stopListeningThread();
@@ -423,6 +380,9 @@ public class JTPClient implements Runnable, AutoCloseable {
         logger.info("Client resources closed successfully.");
     }
 
+    /**
+     * Shuts down response executor service.
+     */
     private void shutdownResponseExecutor() {
         responseExecutor.shutdown();
         try {
@@ -436,6 +396,9 @@ public class JTPClient implements Runnable, AutoCloseable {
         }
     }
 
+    /**
+     * Stops listening thread.
+     */
     private void stopListeningThread() {
         if (listeningThread != null && listeningThread.isAlive()) {
             listeningThread.interrupt();
@@ -448,6 +411,9 @@ public class JTPClient implements Runnable, AutoCloseable {
         }
     }
 
+    /**
+     * Closes I/O streams and socket.
+     */
     private void closeStreamsAndSocket() {
         try {
             if (out != null) {
@@ -465,15 +431,5 @@ public class JTPClient implements Runnable, AutoCloseable {
         } catch (IOException e) {
             logger.error("Error while closing the client SSL socket or streams: {}", e.getMessage());
         }
-    }
-
-    public static void main(String[] args) {
-        JTPClient client = new JTPClient("Client/myConfig.properties");
-
-        client.sendCommand(new HelpCommand());
-
-        Async.waitFor(5000);
-
-        client.close();
     }
 }

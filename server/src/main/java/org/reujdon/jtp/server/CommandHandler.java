@@ -5,27 +5,33 @@ import org.reujdon.jtp.shared.messaging.Message;
 import org.reujdon.jtp.shared.messaging.messages.Response;
 
 /**
- * A functional interface representing a handler for processing commands in the transfer protocol.
+ * An interface for processing commands in JTP.
  *
- * <p>Command handlers are responsible for executing specific commands and returning appropriate
- * responses. Implementations should:</p>
+ * <p>Command handlers execute specific commands and return responses. Implementations must:</p>
  * <ul>
- *   <li>Have a description defined by {@link jdk.jfr.Description}</li>
+ *   <li>Define descriptions with {@link jdk.jfr.Description}</li>
  *   <li>Validate input parameters</li>
- *   <li>Perform the requested operation</li>
- *   <li>Return a well-formed {@link Response}</li>
- *   <li>Handle any command-specific errors</li>
+ *   <li>Perform requested operations</li>
+ *   <li>Return well-formed {@link Response} objects</li>
  * </ul>
  *
- *
+ * @author Reuben Donnison
+ * @version 0.2
  * @see CommandRegistry
  */
 public interface CommandHandler {
-    Permission requiredPermission();
     /**
-     * Processes a command with the given parameters and returns a JSON response.
+     * Gets the permission required to execute this command.
      *
-     * @return A {@link Response} containing the response data
+     * @return the required permission level
+     */
+    Permission requiredPermission();
+
+    /**
+     * Processes a command message and generates a response.
+     *
+     * @param message the incoming command message
+     * @return the command response
      * @throws RuntimeException if command processing fails
      */
     Response handle(Message message);

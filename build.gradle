@@ -37,3 +37,20 @@ subprojects {
         useJUnitPlatform()
     }
 }
+
+tasks.register('aggregateJavadoc', Javadoc) {
+    description = 'Generates unified Javadoc from all subprojects'
+    group = 'Documentation'
+
+    def allJavaSources = files(subprojects.collect { it.sourceSets.main.allJava })
+    def allClasspaths = files(subprojects.collect { it.sourceSets.main.compileClasspath })
+
+    source.setFrom(allJavaSources)
+    classpath.setFrom(allClasspaths)
+
+    destinationDir = layout.buildDirectory.dir("docs/javadoc").get().asFile
+}
+
+tasks.named("build") {
+    dependsOn("aggregateJavadoc")
+}
