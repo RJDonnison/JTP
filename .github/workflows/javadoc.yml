@@ -8,6 +8,9 @@ jobs:
   build:
     if: startsWith(github.ref, 'refs/heads/master') || startsWith(github.ref, 'refs/heads/development-')
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - name: Checkout code
