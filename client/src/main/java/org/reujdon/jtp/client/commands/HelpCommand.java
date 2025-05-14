@@ -17,7 +17,7 @@ public class HelpCommand extends Command {
      * Constructs a new help command with default timeout.
      */
     public HelpCommand() {
-        super("Help");
+        super("Help", 100000);
     }
 
     /**
@@ -36,6 +36,6 @@ public class HelpCommand extends Command {
      */
     @Override
     public void onTimeout() {
-        logger.error("Getting help commands timed out.");
+        logger.error("Getting commands via 'Help' timed out.");
     }
 }

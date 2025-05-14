@@ -36,6 +36,7 @@ import java.util.concurrent.TimeUnit;
 public class JTPClient implements Runnable, AutoCloseable {
     private static final Logger logger = LoggerFactory.getLogger(JTPClient.class);
 
+//    TODO: abstract config logic to be reused in server
     // Constants for environment variable keys
     private static final String ENV_HOST = "CLIENT_HOST";
     private static final String ENV_PORT = "CLIENT_PORT";
@@ -44,7 +45,6 @@ public class JTPClient implements Runnable, AutoCloseable {
     private static final String ENV_API_KEY = "CLIENT_API_KEY";
     private static final String DEFAULT_CONFIG_FILE = "client.properties";
 
-//    TODO: simplify connection to env vars
     private String host;
     private int port = -1;
     private String apiKey;
@@ -57,6 +57,7 @@ public class JTPClient implements Runnable, AutoCloseable {
     private PrintWriter out;
 
     private volatile boolean running = false;
+    private volatile boolean closing = false;
 
     private Thread listeningThread;
 
@@ -82,8 +83,6 @@ public class JTPClient implements Runnable, AutoCloseable {
      */
     public JTPClient(String configFile) {
         loadConfig(configFile);
-
-        run();
     }
 
     /**
@@ -226,9 +225,7 @@ public class JTPClient implements Runnable, AutoCloseable {
             throw new RuntimeException("Client initialization failed", e);
         }
 
-//        ??? Virtual thread ???
-        listeningThread = new Thread(this::handleResponses, "Listening Thread");
-        listeningThread.start();
+        listeningThread = Thread.startVirtualThread(this::handleResponses);
 
         sendAuth();
     }
@@ -312,8 +309,8 @@ public class JTPClient implements Runnable, AutoCloseable {
      * @throws IllegalArgumentException if command is invalid
      */
     public void sendCommand(Command command) {
-        if (!running)
-            throw new IllegalStateException("Client is not running");
+        if (closing || !running)
+            throw new IllegalStateException("Client is shutting down");
 
         if (command == null)
             throw new IllegalArgumentException("Command cannot be null");
@@ -348,9 +345,9 @@ public class JTPClient implements Runnable, AutoCloseable {
      * @param command the command to send
      */
     private void sendCommandNow(Command command) {
-        command.setToken(responseHandler.getToken());
-
         responseHandler.addPendingRequest(command.getId(), command);
+
+        command.setToken(responseHandler.getToken());
 
         try {
             out.println(command.toJSON());
@@ -369,15 +366,65 @@ public class JTPClient implements Runnable, AutoCloseable {
     public void close() {
         logger.info("Closing connection...");
 
-        running = false;
+        closing = true;
 
-//      TODO: wait for all commands to be processed from pending responses and the pendingQueue
+        waitForPendingCommands();
+
+        running = false;
 
         shutdownResponseExecutor();
         stopListeningThread();
         closeStreamsAndSocket();
 
+        closing = false;
         logger.info("Client resources closed successfully.");
+    }
+
+    /**
+     * Waits for completion of pending commands during graceful shutdown.
+     *
+     * <p>Performs the following actions:</p>
+     * <ol>
+     *   <li>Attempts to flush queued commands if authenticated</li>
+     *   <li>Polls for pending responses at fixed intervals</li>
+     *   <li>Respects maximum wait time (5000ms) and interrupt signals</li>
+     * </ol>
+     *
+     * <p>Logs final status of unprocessed commands if timeout occurs.</p>
+     *
+     * @see #flushPendingQueue()
+     * @see ResponseHandler#getPendingCommandCount()
+     * @see ResponseHandler#isAuthenticated()
+     */
+    private void waitForPendingCommands() {
+        logger.info("Waiting for pending responses to complete...");
+
+        final int maxWaitMs = 5000;
+        final int checkIntervalMs = 100;
+        final long endTime = System.currentTimeMillis() + maxWaitMs;
+
+        while ((!pendingQueue.isEmpty() || responseHandler.getPendingCommandCount() > 0)
+                && System.currentTimeMillis() < endTime) {
+            if (responseHandler.isAuthenticated())
+                flushPendingQueue();
+
+            try {
+                long remaining = endTime - System.currentTimeMillis();
+                Thread.sleep(Math.min(checkIntervalMs, remaining));
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                logger.warn("Interrupted while waiting for pending commands");
+                break;
+            }
+        }
+
+        int remainingCommands = responseHandler.getPendingCommandCount();
+        int queuedCommands = pendingQueue.size();
+
+        if (remainingCommands > 0 || queuedCommands > 0)
+            logger.warn("Shutdown completed with {} pending responses and {} queued commands unprocessed", remainingCommands, queuedCommands);
+        else
+            logger.info("All pending commands processed successfully");
     }
 
     /**

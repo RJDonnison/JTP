@@ -6,7 +6,7 @@ import org.reujdon.jtp.shared.messaging.messages.Auth;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Handles and processes responses from the JTP server.
@@ -23,7 +23,7 @@ class ResponseHandler {
     /**
      * Map of pending commands awaiting responses, keyed by message ID
      */
-    private final HashMap<String, Command> pendingResponses = new HashMap<>();
+    private final ConcurrentHashMap<String, Command> pendingResponses = new ConcurrentHashMap<>();
 
     private String token = null;
     private boolean authenticated = false;
@@ -151,7 +151,7 @@ class ResponseHandler {
      * @return the count of pending commands
      * @see #pendingResponses
      */
-    public synchronized int getPendingCommandCount() {
+    public int getPendingCommandCount() {
         return pendingResponses.size();
     }
 }
