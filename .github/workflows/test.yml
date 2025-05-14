@@ -6,7 +6,7 @@ on:
 
 jobs:
   build:
-    if: startsWith(github.ref, 'refs/heads/main') || startsWith(github.ref, 'refs/heads/development-')
+    if: startsWith(github.ref, 'refs/heads/master') || startsWith(github.ref, 'refs/heads/development-')
     runs-on: ubuntu-latest
 
     steps:
