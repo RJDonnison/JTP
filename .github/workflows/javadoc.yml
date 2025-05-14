@@ -8,6 +8,8 @@ jobs:
   build:
     if: startsWith(github.ref, 'refs/heads/master') || startsWith(github.ref, 'refs/heads/development-')
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout code
@@ -28,8 +30,8 @@ jobs:
       - name: Check if Javadoc folder exists
         run: ls -al build/docs/javadoc
 
-      - name: Upload Javadoc
-        uses: actions/upload-artifact@v2
+      - name: Upload JavaDocs as an artifact
+        uses: actions/upload-artifact@v3
         with:
-          name: javadoc
+          name: javadoc-artifact
           path: build/docs/javadoc
