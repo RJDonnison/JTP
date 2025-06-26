@@ -13,17 +13,13 @@ import static org.junit.jupiter.api.Assertions.*;
 class PropertiesUtilTest {
     @Test
     void shouldGetStringPropertyFromFile(@TempDir Path tempDir) throws IOException {
-        // Create a test properties file
         File propFile = tempDir.resolve("test.properties").toFile();
         writeProperties(propFile, "test.key", "test.value", "another.key", "another.value");
 
-        // Test existing property
         assertEquals("test.value", PropertiesUtil.getString(propFile.getAbsolutePath(), "test.key"));
 
-        // Test another property
         assertEquals("another.value", PropertiesUtil.getString(propFile.getAbsolutePath(), "another.key"));
 
-        // Test non-existent property
         assertNull(PropertiesUtil.getString(propFile.getAbsolutePath(), "nonexistent.key"));
     }
 
@@ -45,13 +41,10 @@ class PropertiesUtilTest {
         File propFile = tempDir.resolve("numbers.properties").toFile();
         writeProperties(propFile, "valid.int", "42", "invalid.int", "not.a.number");
 
-        // Test valid integer
         assertEquals(42, PropertiesUtil.getInteger(propFile.getAbsolutePath(), "valid.int"));
 
-        // Test invalid integer
         assertNull(PropertiesUtil.getInteger(propFile.getAbsolutePath(), "invalid.int"));
 
-        // Test non-existent property
         assertNull(PropertiesUtil.getInteger(propFile.getAbsolutePath(), "nonexistent.key"));
     }
 
@@ -73,13 +66,10 @@ class PropertiesUtilTest {
         File propFile = tempDir.resolve("numbers.properties").toFile();
         writeProperties(propFile, "valid.bool", "true", "invalid.bool", "not.a.bool");
 
-        // Test valid bool
         assertTrue(PropertiesUtil.getBoolean(propFile.getAbsolutePath(), "valid.bool"));
 
-        // Test invalid bool
         assertFalse(PropertiesUtil.getBoolean(propFile.getAbsolutePath(), "invalid.bool"));
 
-        // Test non-existent property
         assertNull(PropertiesUtil.getBoolean(propFile.getAbsolutePath(), "nonexistent.key"));
     }
 

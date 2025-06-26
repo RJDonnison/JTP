@@ -207,7 +207,7 @@ public class GsonAdapter implements JsonAdapter {
     public <T> T deserialize(String json, Class<T> clazz) throws JsonException {
         try {
             return gson.fromJson(json, clazz);
-        } catch (JsonException e) {
+        } catch (Exception e) {
             throw new JsonException("Failed to deserialize JSON into " + clazz.getSimpleName(), e);
         }
     }
@@ -219,7 +219,7 @@ public class GsonAdapter implements JsonAdapter {
     public <T> T deserialize(String json, Type typeOfT) throws JsonException {
         try {
             return gson.fromJson(json, typeOfT);
-        } catch (JsonException e) {
+        } catch (Exception e) {
             throw new JsonException("Failed to deserialize into type " + typeOfT.getTypeName(), e);
         }
     }

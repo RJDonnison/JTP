@@ -3,17 +3,20 @@ package org.reujdon.jtp.shared.messaging;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.reujdon.jtp.shared.json.GsonAdapter;
 import org.reujdon.jtp.shared.json.JsonAdapter;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class MessageTest {
     private Message message;
+    private static final String TEST_ID = UUID.randomUUID().toString();
 
     @BeforeEach
     void setUp() {
@@ -127,5 +130,93 @@ class MessageTest {
         assertFalse(message.containsParam("param2"));
         assertFalse(message.containsParam(null));
         assertFalse(message.containsParam(""));
+    }
+
+    @Test
+    void setIdShouldUpdateIdWhenValid() {
+        String newId = "new-id-123";
+        message.setId(newId);
+        assertEquals(newId, message.getId());
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {" ", "\t", "\n"})
+    void setIdShouldThrowWhenInvalid(String invalidId) {
+        assertThrows(IllegalArgumentException.class, () -> message.setId(invalidId));
+
+        assertNotNull(message.getId());
+        assertFalse(message.getId().isEmpty());
+    }
+
+    @Test
+    void setIdShouldAcceptGlobalMessageId() {
+        message.setId("*");
+        assertEquals("*", message.getId());
+    }
+
+    @Test
+    void toJsonShouldReturnValidJson() {
+        message.setId(TEST_ID);
+        message.addParam("key1", "value1");
+        message.addParam("key2", 42);
+
+        String json = message.toJSON();
+        assertNotNull(json);
+        assertTrue(json.contains("\"id\":\"" + TEST_ID + "\""));
+        assertTrue(json.contains("\"key1\":\"value1\""));
+        assertTrue(json.contains("\"key2\":42"));
+        assertTrue(json.contains("\"type\":\"REQUEST\""));
+    }
+
+    @Test
+    void toJsonShouldHandleEmptyParams() {
+        String json = message.toJSON();
+        assertNotNull(json);
+        assertTrue(json.contains("\"params\":{}"));
+    }
+
+    @Test
+    void toJsonShouldHandleSpecialCharacters() {
+        message.addParam("special", "line\nbreak\tand\"quote");
+        String json = message.toJSON();
+        assertTrue(json.contains("line\\nbreak\\tand\\\"quote"));
+    }
+
+    @Test
+    void toStringShouldContainAllFields() {
+        message.setId(TEST_ID);
+        message.addParam("test", "value");
+
+        String str = message.toString();
+        assertTrue(str.contains("id='" + TEST_ID + "'"));
+        assertTrue(str.contains("type=REQUEST"));
+        assertTrue(str.contains("test=value"));
+    }
+
+    @Test
+    void toStringShouldHandleEmptyParams() {
+        String str = message.toString();
+        assertTrue(str.contains("params={}"));
+    }
+
+    @Test
+    void constructorShouldThrowWhenTypeNull() {
+        assertThrows(IllegalArgumentException.class, () -> new Message(null));
+    }
+
+    @Test
+    void constructorShouldThrowWhenIdNull() {
+        assertThrows(IllegalArgumentException.class, () -> new Message(null, MessageType.REQUEST));
+    }
+
+    @Test
+    void getParamShouldThrowWhenKeyNotFound() {
+        assertThrows(IllegalArgumentException.class, () -> message.getParam("nonexistent"));
+    }
+
+    @Test
+    void getParamShouldNotThrowWhenDefaultProvided() {
+        assertDoesNotThrow(() -> message.getParam("nonexistent", "default"));
     }
 }

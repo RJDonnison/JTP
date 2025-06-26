@@ -22,7 +22,7 @@ class TokenUtilTest {
     @Test
     void generatedTokenShouldHaveCorrectLength() {
         String token = TokenUtil.generateSessionToken();
-        // 32 bytes encoded in Base64 without padding should be 43 chars
+
         assertEquals(43, token.length(),
                 "Token should be 43 characters long (32 bytes encoded in URL-safe Base64 without padding)");
     }

@@ -5,7 +5,8 @@ import org.junit.platform.suite.api.Suite;
 
 @Suite
 @SelectClasses({
-    GsonAdapterTest.class
+    GsonAdapterTest.class,
+    JsonExceptionTest.class
 })
 public class JsonTestSuite {
 }
