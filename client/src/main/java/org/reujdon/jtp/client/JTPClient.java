@@ -29,6 +29,7 @@ import java.util.concurrent.TimeUnit;
  *
  * @author Reuben Donnison
  * @version 0.2
+ * @see JTPClientConfig
  * @see Runnable
  * @see AutoCloseable
  */

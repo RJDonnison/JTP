@@ -10,13 +10,27 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Server configuration loader for JTP (JSON Transfer Protocol).
+ * Server configuration loader for JTP.
  *
- * <p>Handles loading and validation of server configuration from:</p>
+ * <h2>Environment Variables</h2>
+ * The following environment variables can be used:
  * <ul>
- *   <li>Environment variables (highest priority)</li>
- *   <li>Properties file (fallback)</li>
+ *     <li>SERVER_PORT – (int) Port number the server should listen on</li>
+ *     <li>SERVER_KEYSTORE_PATH – (String) Path to the SSL keystore file</li>
+ *     <li>SERVER_KEYSTORE_PASSWORD – (String) Password to access the keystore</li>
+ *     <li>SERVER_AUTHENTICATION – (boolean, optional) Whether authentication is required</li>
  * </ul>
+ *
+ * <h2>Properties File Keys</h2>
+ * The following keys are read from the properties file (e.g., <code>server.properties</code>):
+ * <ul>
+ *     <li>server.port – (int) Port number the server should listen on</li>
+ *     <li>server.path – (String) Path to the SSL keystore file</li>
+ *     <li>server.password – (String) Password to access the keystore</li>
+ *     <li>server.authenticate– (boolean, optional) Whether authentication is required</li>
+ * </ul>
+ *
+ * <p>If a value is defined in both the environment and the properties file, the environment value takes precedence.</p>
  *
  * @author Reuben Donnison
  * @version 0.2

@@ -10,10 +10,25 @@ import org.slf4j.LoggerFactory;
 /**
  * Configuration loader for JTP client settings.
  *
- * <p>Handles loading and validation of client configuration from:</p>
+ * <h2>Environment Variables</h2>
  * <ul>
- *   <li>Environment variables (highest priority)</li>
- *   <li>Properties file (fallback)</li>
+ *   <li>CLIENT_HOST – (String) Hostname or IP address of the server</li>
+ *   <li>CLIENT_PORT – (int) Port number of the server</li>
+ *   <li>CLIENT_TRUSTSTORE_PATH – (String) Path to the truststore</li>
+ *   <li>CLIENT_TRUSTSTORE_PASSWORD – (String) Password for the truststore</li>
+ *   <li>CLIENT_API_KEY – (String) API key for authentication with the server</li>
+ *   <li>CLIENT_SHUTDOWN_TIMEOUT – (int, optional) Maximum time (in ms) to wait for responses during shutdown (default: 5000)</li>
+ * </ul>
+ *
+ * <h2>Properties File Keys</h2>
+ * These keys can be specified in a file like <code>client.properties</code>:
+ * <ul>
+ *   <li>client.host – Hostname or IP of the server</li>
+ *   <li>client.port – Server port</li>
+ *   <li>client.truststore – Path to truststore file</li>
+ *   <li>client.truststorePassword – Truststore password</li>
+ *   <li>client.apiKey – API key for authentication</li>
+ *   <li>client.shutdownTimeout – Max wait time (ms) for pending commands before shutdown</li>
  * </ul>
  *
  * @author Reuben Donnison
